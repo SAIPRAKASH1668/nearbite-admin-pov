@@ -1,0 +1,184 @@
+
+    <div class="restaurants-page">
+      <div class="page-header">
+        <div>
+          <h1>Restaurants</h1>
+          <p class="subtitle">{{ restaurants().length }} total restaurants</p>
+        </div>
+        <div class="header-actions">
+          <button class="btn-secondary">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            Export
+          </button>
+          <button class="btn-primary" (click)="refresh()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="23 4 23 10 17 10"></polyline>
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"></path>
+            </svg>
+            Refresh
+          </button>
+        </div>
+      </div>
+
+      <div class="filters-bar">
+        <div class="search-box">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <path d="m21 21-4.35-4.35"></path>
+          </svg>
+          <input 
+            type="text" 
+            placeholder="Search restaurants..." 
+            [(ngModel)]="searchTerm"
+            (input)="applyFilters()"
+          />
+        </div>
+        
+        <div class="filter-chips">
+          <button class="filter-chip" [class.active]="selectedStatus === ''" (click)="filterByStatus('')">
+            All ({{ restaurants().length }})
+          </button>
+          <button class="filter-chip" [class.active]="selectedStatus === RestaurantStatus.ACTIVE" (click)="filterByStatus(RestaurantStatus.ACTIVE)">
+            Active ({{ getStatusCount(RestaurantStatus.ACTIVE) }})
+          </button>
+          <button class="filter-chip" [class.active]="selectedStatus === RestaurantStatus.PENDING_APPROVAL" (click)="filterByStatus(RestaurantStatus.PENDING_APPROVAL)">
+            Pending ({{ getStatusCount(RestaurantStatus.PENDING_APPROVAL) }})
+          </button>
+          <button class="filter-chip" [class.active]="selectedStatus === RestaurantStatus.CLOSED" (click)="filterByStatus(RestaurantStatus.CLOSED)">
+            Closed ({{ getStatusCount(RestaurantStatus.CLOSED) }})
+          </button>
+          <button class="filter-chip" [class.active]="selectedStatus === RestaurantStatus.BLOCKED" (click)="filterByStatus(RestaurantStatus.BLOCKED)">
+            Blocked ({{ getStatusCount(RestaurantStatus.BLOCKED) }})
+          </button>
+        </div>
+      </div>
+
+      <div class="data-table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Restaurant</th>
+              <th>Owner</th>
+              <th>Status</th>
+              <th>KYC</th>
+              <th (click)="sortBy('totalOrders')" class="sortable">Orders
+                <svg class="sort-icon" width="12" height="12" viewBox="0 0 24 24">
+                  <path d="M7 10l5 5 5-5z" fill="currentColor"/>
+                </svg>
+              </th>
+              <th (click)="sortBy('rating')" class="sortable">Rating
+                <svg class="sort-icon" width="12" height="12" viewBox="0 0 24 24">
+                  <path d="M7 10l5 5 5-5z" fill="currentColor"/>
+                </svg>
+              </th>
+              <th (click)="sortBy('commissionRate')" class="sortable">Commission
+                <svg class="sort-icon" width="12" height="12" viewBox="0 0 24 24">
+                  <path d="M7 10l5 5 5-5z" fill="currentColor"/>
+                </svg>
+              </th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (restaurant of paginatedRestaurants(); track restaurant.id) {
+              <tr>
+                <td>
+                  <div class="restaurant-cell">
+                    <strong>{{ restaurant.name }}</strong>
+                    <small>{{ restaurant.cuisineTypes.join(', ') }}</small>
+                    <small class="address">{{ restaurant.address.street }}, {{ restaurant.address.city }}</small>
+                  </div>
+                </td>
+                <td>
+                  <div class="owner-cell">
+                    <div>{{ restaurant.ownerName }}</div>
+                    <small>{{ restaurant.ownerPhone }}</small>
+                  </div>
+                </td>
+                <td>
+                  <span class="status-chip" [attr.data-status]="restaurant.status">
+                    {{ formatStatus(restaurant.status) }}
+                  </span>
+                </td>
+                <td>
+                  <span class="kyc-status" [attr.data-kyc]="restaurant.kycStatus">
+                    {{ formatStatus(restaurant.kycStatus) }}
+                  </span>
+                </td>
+                <td>
+                  <strong>{{ restaurant.totalOrders }}</strong>
+                </td>
+                <td>
+                  <div class="rating-cell">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="var(--color-warning)">
+                      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                    </svg>
+                    {{ restaurant.rating.toFixed(1) }}
+                    <small>({{ restaurant.totalRatings }})</small>
+                  </div>
+                </td>
+                <td>
+                  <strong>{{ restaurant.commissionRate }}%</strong>
+                </td>
+                <td>
+                  <div class="action-buttons">
+                    <button class="btn-icon" title="View Details">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                        <circle cx="12" cy="12" r="3"></circle>
+                      </svg>
+                    </button>
+                    @if (restaurant.status === 'PENDING_APPROVAL') {
+                      <button class="btn-icon btn-success" title="Approve">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                      </button>
+                    }
+                    @if (restaurant.status === 'ACTIVE') {
+                      <button class="btn-icon btn-warning" title="Suspend">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <circle cx="12" cy="12" r="10"></circle>
+                          <line x1="15" y1="9" x2="9" y2="15"></line>
+                          <line x1="9" y1="9" x2="15" y2="15"></line>
+                        </svg>
+                      </button>
+                    }
+                  </div>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="9" class="empty-state">
+                  <p>No restaurants found</p>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <div class="pagination">
+        <div class="pagination-info">
+          Showing {{ getStartIndex() }} - {{ getEndIndex() }} of {{ filteredRestaurants().length }} restaurants
+        </div>
+        <div class="pagination-controls">
+          <button class="btn-pagination" [disabled]="currentPage === 1" (click)="changePage(currentPage - 1)">
+            Previous
+          </button>
+          @for (page of getPageNumbers(); track page) {
+            <button class="btn-pagination" [class.active]="page === currentPage" (click)="changePage(page)">
+              {{ page }}
+            </button>
+          }
+          <button class="btn-pagination" [disabled]="currentPage === getTotalPages()" (click)="changePage(currentPage + 1)">
+            Next
+          </button>
+        </div>
+      </div>
+    </div>
+  

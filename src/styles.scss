@@ -1,0 +1,366 @@
+/* ===================================================================
+   NearBite Admin Console - Global Styles
+   Compact, data-dense, premium SaaS design
+   =================================================================== */
+
+// Angular Material Theme
+@import '@angular/material/prebuilt-themes/indigo-pink.css';
+
+// ===== Color Variables (NearBite Brand) =====
+:root {
+  // Primary colors
+  --color-primary: #FF6B35;
+  --color-primary-dark: #e65a2e;
+  --color-primary-light: #ff8354;
+  
+  // Secondary colors
+  --color-secondary: #004E89;
+  --color-secondary-dark: #003a68;
+  --color-secondary-light: #1a6ba8;
+  
+  // Accent
+  --color-accent: #F7931E;
+  --color-accent-dark: #d67d1a;
+  --color-accent-light: #f9a845;
+  
+  // Neutrals (Dark theme optimized for long hours)
+  --color-bg-primary: #0f1419;
+  --color-bg-secondary: #1a1f29;
+  --color-bg-tertiary: #252b36;
+  --color-bg-elevated: #2d3441;
+  
+  // Text colors
+  --color-text-primary: #e8eaed;
+  --color-text-secondary: #9aa0a6;
+  --color-text-tertiary: #6c737a;
+  --color-text-disabled: #4a5057;
+  
+  // Status colors
+  --color-success: #34a853;
+  --color-success-bg: rgba(52, 168, 83, 0.1);
+  --color-warning: #fbbc04;
+  --color-warning-bg: rgba(251, 188, 4, 0.1);
+  --color-error: #ea4335;
+  --color-error-bg: rgba(234, 67, 53, 0.1);
+  --color-info: #4285f4;
+  --color-info-bg: rgba(66, 133, 244, 0.1);
+  
+  // Borders
+  --color-border: #3c4248;
+  --color-border-light: #2d3339;
+  
+  // Shadows
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 2px 4px 0 rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 4px 8px 0 rgba(0, 0, 0, 0.5);
+  
+  // Spacing (compact design)
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 12px;
+  --space-lg: 16px;
+  --space-xl: 24px;
+  
+  // Typography
+  --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', monospace;
+  
+  // Sizes (compact)
+  --header-height: 56px;
+  --sidebar-width: 240px;
+  --sidebar-collapsed-width: 60px;
+}
+
+// ===== Reset & Base Styles =====
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  height: 100%;
+  margin: 0;
+  font-family: var(--font-family);
+  font-size: 13px; // Compact, data-dense
+  line-height: 1.5;
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+// ===== Typography =====
+h1, h2, h3, h4, h5, h6 {
+  margin: 0 0 var(--space-md) 0;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--color-text-primary);
+}
+
+h1 { font-size: 24px; }
+h2 { font-size: 20px; }
+h3 { font-size: 16px; }
+h4 { font-size: 14px; }
+h5 { font-size: 13px; }
+h6 { font-size: 12px; }
+
+p {
+  margin: 0 0 var(--space-md) 0;
+}
+
+a {
+  color: var(--color-primary);
+  text-decoration: none;
+  transition: color 0.2s;
+  
+  &:hover {
+    color: var(--color-primary-light);
+  }
+}
+
+// ===== Utility Classes =====
+.text-primary { color: var(--color-primary); }
+.text-secondary { color: var(--color-text-secondary); }
+.text-success { color: var(--color-success); }
+.text-warning { color: var(--color-warning); }
+.text-error { color: var(--color-error); }
+.text-muted { color: var(--color-text-tertiary); }
+
+.font-mono { font-family: var(--font-mono); }
+.font-bold { font-weight: 600; }
+.font-semibold { font-weight: 500; }
+
+.text-xs { font-size: 11px; }
+.text-sm { font-size: 12px; }
+.text-base { font-size: 13px; }
+.text-lg { font-size: 14px; }
+.text-xl { font-size: 16px; }
+
+// ===== Cards & Containers =====
+.card {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: var(--space-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.card-compact {
+  padding: var(--space-md);
+}
+
+// ===== Buttons =====
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.5;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s;
+  gap: 6px;
+  white-space: nowrap;
+  
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.btn-primary {
+  background: var(--color-primary);
+  color: white;
+  
+  &:hover:not(:disabled) {
+    background: var(--color-primary-dark);
+  }
+}
+
+.btn-secondary {
+  background: var(--color-bg-tertiary);
+  color: var(--color-text-primary);
+  border-color: var(--color-border);
+  
+  &:hover:not(:disabled) {
+    background: var(--color-bg-elevated);
+  }
+}
+
+.btn-sm {
+  padding: 4px 8px;
+  font-size: 12px;
+}
+
+// ===== Status Chips =====
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  
+  &.status-success {
+    background: var(--color-success-bg);
+    color: var(--color-success);
+  }
+  
+  &.status-warning {
+    background: var(--color-warning-bg);
+    color: var(--color-warning);
+  }
+  
+  &.status-error {
+    background: var(--color-error-bg);
+    color: var(--color-error);
+  }
+  
+  &.status-info {
+    background: var(--color-info-bg);
+    color: var(--color-info);
+  }
+}
+
+// ===== Tables =====
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  
+  thead {
+    background: var(--color-bg-tertiary);
+    border-bottom: 1px solid var(--color-border);
+    
+    th {
+      padding: 8px 12px;
+      text-align: left;
+      font-weight: 600;
+      color: var(--color-text-secondary);
+      text-transform: uppercase;
+      font-size: 11px;
+      letter-spacing: 0.5px;
+    }
+  }
+  
+  tbody {
+    tr {
+      border-bottom: 1px solid var(--color-border-light);
+      transition: background 0.15s;
+      
+      &:hover {
+        background: var(--color-bg-tertiary);
+      }
+    }
+    
+    td {
+      padding: 10px 12px;
+      color: var(--color-text-primary);
+    }
+  }
+}
+
+// ===== Forms =====
+.form-group {
+  margin-bottom: var(--space-md);
+}
+
+.form-label {
+  display: block;
+  margin-bottom: var(--space-xs);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+.form-input {
+  width: 100%;
+  padding: 8px 12px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--color-text-primary);
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  transition: all 0.2s;
+  
+  &:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.1);
+  }
+  
+  &::placeholder {
+    color: var(--color-text-disabled);
+  }
+}
+
+// ===== Scrollbar Styling =====
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-bg-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-bg-elevated);
+  border-radius: 4px;
+  
+  &:hover {
+    background: #3d4451;
+  }
+}
+
+// ===== Loading & Skeleton =====
+.skeleton {
+  background: linear-gradient(90deg, var(--color-bg-tertiary) 25%, var(--color-bg-elevated) 50%, var(--color-bg-tertiary) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s infinite;
+  border-radius: 4px;
+}
+
+@keyframes skeleton-loading {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+// ===== Animations =====
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(-10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.fade-in {
+  animation: fadeIn 0.3s ease-in;
+}
+
+.slide-in-right {
+  animation: slideInRight 0.3s ease-out;
+}
+
+// ===== Responsive Utilities =====
+@media (max-width: 768px) {
+  html, body {
+    font-size: 12px;
+  }
+}

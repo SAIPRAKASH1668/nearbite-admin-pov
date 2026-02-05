@@ -1,0 +1,309 @@
+
+    <div class="settlements-page">
+      <div class="page-header">
+        <div>
+          <h1>Settlements & Payouts</h1>
+          <p class="subtitle">Manage restaurant settlements and payment processing</p>
+        </div>
+        <div class="header-actions">
+          @if (selectedSettlements().length > 0) {
+            <button class="btn-secondary" (click)="clearSelection()">
+              Clear Selection ({{ selectedSettlements().length }})
+            </button>
+            <button class="btn-success" (click)="bulkApprove()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+              Approve Selected ({{ selectedSettlements().length }})
+            </button>
+          }
+          <button class="btn-primary" (click)="refresh()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="23 4 23 10 17 10"></polyline>
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"></path>
+            </svg>
+            Refresh
+          </button>
+        </div>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">Pending Settlements</div>
+          <div class="stat-value">\${{ getTotalPending().toFixed(2) }}</div>
+          <div class="stat-meta">{{ getPendingCount() }} restaurants</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Processing</div>
+          <div class="stat-value">{{ getProcessingCount() }}</div>
+          <div class="stat-meta">\${{ getTotalProcessing().toFixed(2) }}</div>
+        </div>
+        <div class="stat-card success">
+          <div class="stat-label">Completed This Week</div>
+          <div class="stat-value">{{ getCompletedCount() }}</div>
+          <div class="stat-meta">\${{ getTotalCompleted().toFixed(2) }}</div>
+        </div>
+        <div class="stat-card error">
+          <div class="stat-label">Failed</div>
+          <div class="stat-value">{{ getFailedCount() }}</div>
+          <div class="stat-meta">Requires attention</div>
+        </div>
+      </div>
+
+      <div class="filters-bar">
+        <div class="filter-chips">
+          <button class="filter-chip" [class.active]="selectedStatus === ''" (click)="filterByStatus('')">
+            All ({{ settlements().length }})
+          </button>
+          <button class="filter-chip" [class.active]="selectedStatus === SettlementStatus.PENDING" (click)="filterByStatus(SettlementStatus.PENDING)">
+            Pending ({{ getPendingCount() }})
+          </button>
+          <button class="filter-chip" [class.active]="selectedStatus === SettlementStatus.PROCESSING" (click)="filterByStatus(SettlementStatus.PROCESSING)">
+            Processing ({{ getProcessingCount() }})
+          </button>
+          <button class="filter-chip" [class.active]="selectedStatus === SettlementStatus.COMPLETED" (click)="filterByStatus(SettlementStatus.COMPLETED)">
+            Completed ({{ getCompletedCount() }})
+          </button>
+          <button class="filter-chip" [class.active]="selectedStatus === SettlementStatus.FAILED" (click)="filterByStatus(SettlementStatus.FAILED)">
+            Failed ({{ getFailedCount() }})
+          </button>
+        </div>
+      </div>
+
+      <div class="data-table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th style="width: 40px">
+                <input 
+                  type="checkbox" 
+                  [checked]="isAllPendingSelected()"
+                  (change)="toggleSelectAllPending()"
+                  class="checkbox"
+                />
+              </th>
+              <th>Settlement ID</th>
+              <th>Restaurant</th>
+              <th>Period</th>
+              <th>Orders</th>
+              <th>Gross Revenue</th>
+              <th>Net Payout</th>
+              <th>Status</th>
+              <th>Scheduled</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (settlement of filteredSettlements(); track settlement.id) {
+              <tr [class.expanded]="expandedRow === settlement.id" [class.selected]="isSelected(settlement.id)">
+                <td>
+                  @if (settlement.status === SettlementStatus.PENDING) {
+                    <input 
+                      type="checkbox" 
+                      [checked]="isSelected(settlement.id)"
+                      (change)="toggleSelect(settlement.id)"
+                      class="checkbox"
+                    />
+                  }
+                </td>
+                <td>
+                  <span class="settlement-id">{{ settlement.id }}</span>
+                </td>
+                <td>
+                  <div class="restaurant-cell">
+                    <strong>{{ settlement.restaurantName }}</strong>
+                    <small>{{ settlement.accountHolderName }}</small>
+                  </div>
+                </td>
+                <td>
+                  <div class="period-cell">
+                    <div>{{ formatDate(settlement.periodStart) }}</div>
+                    <small>to {{ formatDate(settlement.periodEnd) }}</small>
+                  </div>
+                </td>
+                <td>
+                  <strong>{{ settlement.totalOrders }}</strong>
+                </td>
+                <td>
+                  <strong class="amount">\${{ settlement.grossRevenue.toFixed(2) }}</strong>
+                </td>
+                <td>
+                  <strong class="net-amount">\${{ settlement.netPayable.toFixed(2) }}</strong>
+                </td>
+                <td>
+                  <span class="status-chip" [attr.data-status]="settlement.status">
+                    {{ settlement.status }}
+                  </span>
+                </td>
+                <td>
+                  <div class="date-cell">
+                    {{ formatDate(settlement.scheduledPayoutDate) }}
+                  </div>
+                </td>
+                <td>
+                  <div class="action-buttons">
+                    <button class="btn-icon" title="View Details" (click)="toggleRow(settlement.id)">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        @if (expandedRow === settlement.id) {
+                          <polyline points="18 15 12 9 6 15"></polyline>
+                        } @else {
+                          <polyline points="6 9 12 15 18 9"></polyline>
+                        }
+                      </svg>
+                    </button>
+                    @if (settlement.status === SettlementStatus.PENDING) {
+                      <button class="btn-icon btn-success" title="Approve Settlement" (click)="approve(settlement)">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                      </button>
+                      <button class="btn-icon btn-error" title="Reject Settlement" (click)="reject(settlement)">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <line x1="18" y1="6" x2="6" y2="18"></line>
+                          <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                      </button>
+                    }
+                  </div>
+                </td>
+              </tr>
+              @if (expandedRow === settlement.id) {
+                <tr class="details-row">
+                  <td colspan="10">
+                    <div class="settlement-details">
+                      <div class="details-grid">
+                        <!-- Financial Breakdown -->
+                        <div class="detail-section">
+                          <h4>Financial Breakdown</h4>
+                          <div class="breakdown-table">
+                            <div class="breakdown-row">
+                              <span class="label">Gross Revenue:</span>
+                              <span class="value">\${{ settlement.grossRevenue.toFixed(2) }}</span>
+                            </div>
+                            <div class="breakdown-row deduction">
+                              <span class="label">Platform Commission ({{ getCommissionRate(settlement) }}%):</span>
+                              <span class="value negative">-\${{ settlement.platformCommission.toFixed(2) }}</span>
+                            </div>
+                            <div class="breakdown-row deduction">
+                              <span class="label">Delivery Commission:</span>
+                              <span class="value negative">-\${{ settlement.deliveryCommission.toFixed(2) }}</span>
+                            </div>
+                            <div class="breakdown-row deduction">
+                              <span class="label">Taxes:</span>
+                              <span class="value negative">-\${{ settlement.taxes.toFixed(2) }}</span>
+                            </div>
+                            @if (settlement.adjustments !== 0) {
+                              <div class="breakdown-row" [class.adjustment-positive]="settlement.adjustments > 0" [class.adjustment-negative]="settlement.adjustments < 0">
+                                <span class="label">Adjustments:</span>
+                                <span class="value">{{ settlement.adjustments > 0 ? '+' : '' }}\${{ settlement.adjustments.toFixed(2) }}</span>
+                              </div>
+                            }
+                            <div class="breakdown-row total">
+                              <span class="label"><strong>Net Payout:</strong></span>
+                              <span class="value"><strong>\${{ settlement.netPayable.toFixed(2) }}</strong></span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <!-- Bank Details -->
+                        <div class="detail-section">
+                          <h4>Bank Account Details</h4>
+                          <div class="info-grid">
+                            <div class="info-item">
+                              <span class="info-label">Account Holder:</span>
+                              <span class="info-value">{{ settlement.accountHolderName }}</span>
+                            </div>
+                            <div class="info-item">
+                              <span class="info-label">Account Number:</span>
+                              <span class="info-value">{{ settlement.accountNumber }}</span>
+                            </div>
+                            <div class="info-item">
+                              <span class="info-label">IFSC Code:</span>
+                              <span class="info-value">{{ settlement.ifscCode }}</span>
+                            </div>
+                            @if (settlement.utrNumber) {
+                              <div class="info-item">
+                                <span class="info-label">UTR Number:</span>
+                                <span class="info-value">{{ settlement.utrNumber }}</span>
+                              </div>
+                            }
+                          </div>
+                        </div>
+
+                        <!-- Settlement Timeline -->
+                        <div class="detail-section">
+                          <h4>Settlement Timeline</h4>
+                          <div class="timeline">
+                            <div class="timeline-item completed">
+                              <div class="timeline-dot"></div>
+                              <div class="timeline-content">
+                                <span class="timeline-label">Created:</span>
+                                <span class="timeline-value">{{ formatDateTime(settlement.createdAt) }}</span>
+                              </div>
+                            </div>
+                            @if (settlement.approvedAt) {
+                              <div class="timeline-item completed">
+                                <div class="timeline-dot"></div>
+                                <div class="timeline-content">
+                                  <span class="timeline-label">Approved:</span>
+                                  <span class="timeline-value">{{ formatDateTime(settlement.approvedAt) }}</span>
+                                </div>
+                              </div>
+                            }
+                            <div class="timeline-item" [class.completed]="settlement.status === SettlementStatus.COMPLETED">
+                              <div class="timeline-dot"></div>
+                              <div class="timeline-content">
+                                <span class="timeline-label">Scheduled Payout:</span>
+                                <span class="timeline-value">{{ formatDate(settlement.scheduledPayoutDate) }}</span>
+                              </div>
+                            </div>
+                            @if (settlement.actualPayoutDate) {
+                              <div class="timeline-item completed">
+                                <div class="timeline-dot"></div>
+                                <div class="timeline-content">
+                                  <span class="timeline-label">Completed:</span>
+                                  <span class="timeline-value">{{ formatDateTime(settlement.actualPayoutDate) }}</span>
+                                </div>
+                              </div>
+                            }
+                          </div>
+                        </div>
+
+                        <!-- Actions -->
+                        @if (settlement.status === SettlementStatus.PENDING) {
+                          <div class="detail-section actions-section">
+                            <h4>Actions</h4>
+                            <div class="action-buttons-large">
+                              <button class="btn-large btn-approve" (click)="approve(settlement)">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                  <polyline points="20 6 9 17 4 12"></polyline>
+                                </svg>
+                                Approve Settlement
+                              </button>
+                              <button class="btn-large btn-reject" (click)="reject(settlement)">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                                </svg>
+                                Reject Settlement
+                              </button>
+                            </div>
+                          </div>
+                        }
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              }
+            } @empty {
+              <tr>
+                <td colspan="10" class="empty-state">
+                  <p>No settlements found</p>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  

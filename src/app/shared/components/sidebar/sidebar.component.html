@@ -1,0 +1,52 @@
+<aside class="sidebar">
+  <div class="sidebar-header">
+    <div class="logo">
+      <div class="logo-text">
+        <div class="logo-title">NearBite</div>
+        <div class="logo-subtitle">Admin Console</div>
+      </div>
+      <div class="logo-icon"></div>
+    </div>
+  </div>
+  
+  <nav class="sidebar-nav">
+    <div *ngFor="let item of menuItems" class="menu-item-wrapper">
+      <a 
+        *ngIf="!item.children"
+        [routerLink]="item.route"
+        routerLinkActive="active"
+        class="menu-item"
+      >
+        <span class="menu-icon" [innerHTML]="item.icon"></span>
+        <span class="menu-label">{{ item.label }}</span>
+        <span class="menu-badge" *ngIf="item.badge">{{ item.badge }}</span>
+      </a>
+      
+      <div *ngIf="item.children" class="menu-group">
+        <div 
+          class="menu-item" 
+          [class.expanded]="item.expanded"
+          (click)="toggleGroup(item)"
+        >
+          <span class="menu-icon" [innerHTML]="item.icon"></span>
+          <span class="menu-label">{{ item.label }}</span>
+          <svg class="menu-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </div>
+        
+        <div class="submenu" *ngIf="item.expanded">
+          <a 
+            *ngFor="let child of item.children"
+            [routerLink]="child.route"
+            routerLinkActive="active"
+            class="submenu-item"
+          >
+            {{ child.label }}
+            <span class="menu-badge" *ngIf="child.badge">{{ child.badge }}</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </nav>
+</aside>

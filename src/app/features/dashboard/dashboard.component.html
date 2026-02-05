@@ -1,0 +1,202 @@
+
+    <div class="dashboard">
+      <div class="page-header">
+        <div>
+          <h1>Platform Overview</h1>
+          <p class="text-secondary">Real-time monitoring and key performance indicators</p>
+        </div>
+        <div class="header-actions">
+          <button class="btn btn-secondary btn-sm">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="23 4 23 10 17 10"></polyline>
+              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+            </svg>
+            Refresh
+          </button>
+          <button class="btn btn-primary btn-sm">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            Export Report
+          </button>
+        </div>
+      </div>
+      
+      <!-- Real-time Metrics -->
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <div class="metric-header">
+            <span class="metric-label">Active Orders</span>
+            <div class="status-dot online"></div>
+          </div>
+          <div class="metric-value">{{ metrics.activeOrders }}</div>
+          <div class="metric-footer">
+            <span class="text-success">↑ 12%</span> vs last hour
+          </div>
+        </div>
+        
+        <div class="metric-card">
+          <div class="metric-header">
+            <span class="metric-label">Online Riders</span>
+            <div class="status-dot online"></div>
+          </div>
+          <div class="metric-value">{{ metrics.activeRiders }}</div>
+          <div class="metric-footer">
+            <span class="text-warning">{{ metrics.activeRiders - 20 }}</span> on delivery
+          </div>
+        </div>
+        
+        <div class="metric-card">
+          <div class="metric-header">
+            <span class="metric-label">Orders Today</span>
+          </div>
+          <div class="metric-value">{{ metrics.ordersToday | number }}</div>
+          <div class="metric-footer">
+            <span class="text-success">↑ 18.3%</span> vs yesterday
+          </div>
+        </div>
+        
+        <div class="metric-card">
+          <div class="metric-header">
+            <span class="metric-label">Revenue Today</span>
+          </div>
+          <div class="metric-value">\${{ (metrics.revenueToday / 1000).toFixed(1) }}k</div>
+          <div class="metric-footer">
+            <span class="text-success">↑ 24.1%</span> vs yesterday
+          </div>
+        </div>
+        
+        <div class="metric-card">
+          <div class="metric-header">
+            <span class="metric-label">Completion Rate</span>
+          </div>
+          <div class="metric-value">{{ metrics.orderCompletionRate.toFixed(1) }}%</div>
+          <div class="metric-footer">
+            Target: <span class="text-primary">95%</span>
+          </div>
+        </div>
+        
+        <div class="metric-card">
+          <div class="metric-header">
+            <span class="metric-label">Avg Delivery Time</span>
+          </div>
+          <div class="metric-value">{{ metrics.avgDeliveryTime }} min</div>
+          <div class="metric-footer">
+            <span class="text-success">↓ 2min</span> improvement
+          </div>
+        </div>
+        
+        <div class="metric-card">
+          <div class="metric-header">
+            <span class="metric-label">System Uptime</span>
+          </div>
+          <div class="metric-value">{{ metrics.systemUptime }}%</div>
+          <div class="metric-footer">
+            <span class="text-success">Excellent</span>
+          </div>
+        </div>
+        
+        <div class="metric-card">
+          <div class="metric-header">
+            <span class="metric-label">API Latency</span>
+          </div>
+          <div class="metric-value">{{ metrics.apiLatency }}ms</div>
+          <div class="metric-footer">
+            <span class="text-success">Good</span> performance
+          </div>
+        </div>
+      </div>
+      
+      <!-- Charts Section -->
+      <div class="charts-grid">
+        <div class="card">
+          <h3>Revenue Trend (7 Days)</h3>
+          <canvas #revenueChart></canvas>
+        </div>
+        
+        <div class="card">
+          <h3>Order Status Distribution</h3>
+          <canvas #orderChart></canvas>
+        </div>
+      </div>
+      
+      <!-- Quick Actions -->
+      <div class="section">
+        <h3>Quick Actions</h3>
+        <div class="quick-actions">
+          <button class="action-card">
+            <div class="action-icon primary">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"></path>
+                <path d="M7 2v20"></path>
+              </svg>
+            </div>
+            <div class="action-content">
+              <div class="action-title">Approve Restaurant</div>
+              <div class="action-subtitle">8 pending</div>
+            </div>
+          </button>
+          
+          <button class="action-card">
+            <div class="action-icon warning">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="1" x2="12" y2="23"></line>
+                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+              </svg>
+            </div>
+            <div class="action-content">
+              <div class="action-title">Process Settlements</div>
+              <div class="action-subtitle">12 pending</div>
+            </div>
+          </button>
+          
+          <button class="action-card">
+            <div class="action-icon error">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+              </svg>
+            </div>
+            <div class="action-content">
+              <div class="action-title">Support Tickets</div>
+              <div class="action-subtitle">47 open</div>
+            </div>
+          </button>
+          
+          <button class="action-card">
+            <div class="action-icon success">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="1" y="3" width="15" height="13"></rect>
+                <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon>
+              </svg>
+            </div>
+            <div class="action-content">
+              <div class="action-title">Verify Riders</div>
+              <div class="action-subtitle">5 pending</div>
+            </div>
+          </button>
+        </div>
+      </div>
+      
+      <!-- Recent Activity -->
+      <div class="section">
+        <h3>Recent Activity</h3>
+        <div class="activity-list card">
+          <div class="activity-item" *ngFor="let activity of recentActivity">
+            <div class="activity-icon" [class]="'icon-' + activity.type">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <polyline points="12 6 12 12 16 14"></polyline>
+              </svg>
+            </div>
+            <div class="activity-content">
+              <div class="activity-title">{{ activity.title }}</div>
+              <div class="activity-meta">{{ activity.user }} • {{ activity.time }}</div>
+            </div>
+            <span class="status-chip" [class]="'status-' + activity.status">{{ activity.statusText }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  

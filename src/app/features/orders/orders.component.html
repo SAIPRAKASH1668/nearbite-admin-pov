@@ -1,0 +1,259 @@
+
+    <div class="orders-page">
+      <!-- Page Header -->
+      <div class="page-header">
+        <div class="header-content">
+          <h1>Order Management</h1>
+          <p class="subtitle">Real-time order monitoring and management</p>
+        </div>
+        <div class="header-actions">
+          <button class="btn-secondary">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            Export
+          </button>
+          <button class="btn-primary" (click)="refreshOrders()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="23 4 23 10 17 10"></polyline>
+              <polyline points="1 20 1 14 7 14"></polyline>
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+            </svg>
+            Refresh
+          </button>
+        </div>
+      </div>
+
+      <!-- Filters -->
+      <div class="filters-bar">
+        <div class="search-box">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <path d="m21 21-4.35-4.35"></path>
+          </svg>
+          <input 
+            type="text" 
+            placeholder="Search by order #, restaurant, customer..." 
+            [(ngModel)]="searchTerm"
+            (input)="applyFilters()"
+          />
+        </div>
+        
+        <div class="filter-chips">
+          <button 
+            class="filter-chip" 
+            [class.active]="selectedStatus === ''"
+            (click)="filterByStatus('')"
+          >
+            All Orders ({{ orders().length }})
+          </button>
+          <button 
+            class="filter-chip" 
+            [class.active]="selectedStatus === OrderStatus.PLACED"
+            (click)="filterByStatus(OrderStatus.PLACED)"
+          >
+            Placed ({{ getStatusCount(OrderStatus.PLACED) }})
+          </button>
+          <button 
+            class="filter-chip" 
+            [class.active]="selectedStatus === OrderStatus.CONFIRMED"
+            (click)="filterByStatus(OrderStatus.CONFIRMED)"
+          >
+            Confirmed ({{ getStatusCount(OrderStatus.CONFIRMED) }})
+          </button>
+          <button 
+            class="filter-chip" 
+            [class.active]="selectedStatus === OrderStatus.PREPARING"
+            (click)="filterByStatus(OrderStatus.PREPARING)"
+          >
+            Preparing ({{ getStatusCount(OrderStatus.PREPARING) }})
+          </button>
+          <button 
+            class="filter-chip" 
+            [class.active]="selectedStatus === OrderStatus.READY_FOR_PICKUP"
+            (click)="filterByStatus(OrderStatus.READY_FOR_PICKUP)"
+          >
+            Ready ({{ getStatusCount(OrderStatus.READY_FOR_PICKUP) }})
+          </button>
+          <button 
+            class="filter-chip" 
+            [class.active]="selectedStatus === OrderStatus.PICKED_UP"
+            (click)="filterByStatus(OrderStatus.PICKED_UP)"
+          >
+            Picked Up ({{ getStatusCount(OrderStatus.PICKED_UP) }})
+          </button>
+          <button 
+            class="filter-chip" 
+            [class.active]="selectedStatus === OrderStatus.OUT_FOR_DELIVERY"
+            (click)="filterByStatus(OrderStatus.OUT_FOR_DELIVERY)"
+            >
+            In Transit ({{ getStatusCount(OrderStatus.OUT_FOR_DELIVERY) }})
+          </button>
+          <button 
+            class="filter-chip" 
+            [class.active]="selectedStatus === OrderStatus.DELIVERED"
+            (click)="filterByStatus(OrderStatus.DELIVERED)"
+          >
+            Delivered ({{ getStatusCount(OrderStatus.DELIVERED) }})
+          </button>
+          <button 
+            class="filter-chip" 
+            [class.active]="selectedStatus === OrderStatus.CANCELLED"
+            (click)="filterByStatus(OrderStatus.CANCELLED)"
+          >
+            Cancelled ({{ getStatusCount(OrderStatus.CANCELLED) }})
+          </button>
+        </div>
+      </div>
+
+      <!-- Data Table -->
+      <div class="data-table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th (click)="sortBy('orderNumber')" class="sortable">
+                Order #
+                <svg class="sort-icon" width="12" height="12" viewBox="0 0 24 24">
+                  <path d="M7 10l5 5 5-5z" fill="currentColor"/>
+                </svg>
+              </th>
+              <th>Restaurant</th>
+              <th>Customer</th>
+              <th>Items</th>
+              <th (click)="sortBy('totalAmount')" class="sortable">
+                Amount
+                <svg class="sort-icon" width="12" height="12" viewBox="0 0 24 24">
+                  <path d="M7 10l5 5 5-5z" fill="currentColor"/>
+                </svg>
+              </th>
+              <th>Status</th>
+              <th>Payment</th>
+              <th>Rider</th>
+              <th (click)="sortBy('createdAt')" class="sortable">
+                Time
+                <svg class="sort-icon" width="12" height="12" viewBox="0 0 24 24">
+                  <path d="M7 10l5 5 5-5z" fill="currentColor"/>
+                </svg>
+              </th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (order of paginatedOrders(); track order.id) {
+              <tr>
+                <td>
+                  <span class="order-number">#{{ order.orderNumber }}</span>
+                </td>
+                <td>
+                  <div class="restaurant-cell">
+                    <strong>{{ order.restaurantName }}</strong>
+                  </div>
+                </td>
+                <td>
+                  <div class="customer-cell">
+                    <div>{{ order.customerDetails.name }}</div>
+                    <small>{{ order.customerDetails.phone }}</small>
+                  </div>
+                </td>
+                <td>
+                  <span class="items-count">{{ order.items.length }} items</span>
+                </td>
+                <td>
+                  <strong class="amount">\${{ order.totalAmount.toFixed(2) }}</strong>
+                </td>
+                <td>
+                  <span class="status-chip" [attr.data-status]="order.status">
+                    {{ formatStatus(order.status) }}
+                  </span>
+                </td>
+                <td>
+                  <span class="payment-status" [attr.data-payment]="order.paymentStatus">
+                    {{ formatStatus(order.paymentStatus) }}
+                  </span>
+                </td>
+                <td>
+                  @if (order.deliveryDetails?.riderName) {
+                    <div class="rider-cell">
+                      <div>{{ order.deliveryDetails.riderName }}</div>
+                      <small>{{ order.deliveryDetails.riderPhone }}</small>
+                    </div>
+                  } @else {
+                    <span class="text-muted">Not assigned</span>
+                  }
+                </td>
+                <td>
+                  <div class="time-cell">
+                    <div>{{ formatDate(order.createdAt) }}</div>
+                    <small>{{ getTimeAgo(order.createdAt) }}</small>
+                  </div>
+                </td>
+                <td>
+                  <div class="action-buttons">
+                    <button class="btn-icon" title="View Details" (click)="viewOrder(order)">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                        <circle cx="12" cy="12" r="3"></circle>
+                      </svg>
+                    </button>
+                    @if (order.status !== 'DELIVERED' && order.status !== 'CANCELLED') {
+                      <button class="btn-icon" title="Cancel Order" (click)="cancelOrder(order)">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <line x1="18" y1="6" x2="6" y2="18"></line>
+                          <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                      </button>
+                    }
+                  </div>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="10" class="empty-state">
+                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <path d="M12 6v6l4 2"></path>
+                  </svg>
+                  <p>No orders found</p>
+                  <small>Try adjusting your filters</small>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination -->
+      <div class="pagination">
+        <div class="pagination-info">
+          Showing {{ getStartIndex() }} - {{ getEndIndex() }} of {{ filteredOrders().length }} orders
+        </div>
+        <div class="pagination-controls">
+          <button 
+            class="btn-pagination" 
+            [disabled]="currentPage === 1"
+            (click)="changePage(currentPage - 1)"
+          >
+            Previous
+          </button>
+          @for (page of getPageNumbers(); track page) {
+            <button 
+              class="btn-pagination" 
+              [class.active]="page === currentPage"
+              (click)="changePage(page)"
+            >
+              {{ page }}
+            </button>
+          }
+          <button 
+            class="btn-pagination" 
+            [disabled]="currentPage === getTotalPages()"
+            (click)="changePage(currentPage + 1)"
+          >
+            Next
+          </button>
+        </div>
+      </div>
+    </div>
+  

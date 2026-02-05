@@ -1,0 +1,178 @@
+
+    <div class="support-page">
+      <div class="page-header">
+        <div>
+          <h1>Support Tickets</h1>
+          <p class="subtitle">Manage customer, restaurant, and rider support requests</p>
+        </div>
+        <button class="btn-primary" (click)="refresh()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="23 4 23 10 17 10"></polyline>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"></path>
+          </svg>
+          Refresh
+        </button>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">Open Tickets</div>
+          <div class="stat-value">{{ getStatusCount(TicketStatus.OPEN) }}</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">In Progress</div>
+          <div class="stat-value">{{ getStatusCount(TicketStatus.IN_PROGRESS) }}</div>
+        </div>
+        <div class="stat-card error">
+          <div class="stat-label">SLA Breached</div>
+          <div class="stat-value">{{ getSLABreachedCount() }}</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Resolved Today</div>
+          <div class="stat-value">{{ getResolvedTodayCount() }}</div>
+        </div>
+      </div>
+
+      <div class="filters-bar">
+        <div class="search-box">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <path d="m21 21-4.35-4.35"></path>
+          </svg>
+          <input 
+            type="text" 
+            placeholder="Search tickets..." 
+            [(ngModel)]="searchTerm"
+            (input)="applyFilters()"
+          />
+        </div>
+        
+        <div class="filter-chips">
+          <button class="filter-chip" [class.active]="selectedStatus === ''" (click)="filterByStatus('')">
+            All ({{ tickets().length }})
+          </button>
+          <button class="filter-chip" [class.active]="selectedStatus === TicketStatus.OPEN" (click)="filterByStatus(TicketStatus.OPEN)">
+            Open ({{ getStatusCount(TicketStatus.OPEN) }})
+          </button>
+          <button class="filter-chip" [class.active]="selectedStatus === TicketStatus.IN_PROGRESS" (click)="filterByStatus(TicketStatus.IN_PROGRESS)">
+            In Progress ({{ getStatusCount(TicketStatus.IN_PROGRESS) }})
+          </button>
+          <button class="filter-chip" [class.active]="selectedStatus === TicketStatus.RESOLVED" (click)="filterByStatus(TicketStatus.RESOLVED)">
+            Resolved ({{ getStatusCount(TicketStatus.RESOLVED) }})
+          </button>
+          <button class="filter-chip" [class.active]="selectedStatus === TicketStatus.CLOSED" (click)="filterByStatus(TicketStatus.CLOSED)">
+            Closed ({{ getStatusCount(TicketStatus.CLOSED) }})
+          </button>
+        </div>
+      </div>
+
+      <div class="data-table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Ticket #</th>
+              <th>User</th>
+              <th>Subject</th>
+              <th>Category</th>
+              <th>Priority</th>
+              <th>Status</th>
+              <th>Assigned To</th>
+              <th>SLA</th>
+              <th>Created</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (ticket of paginatedTickets(); track ticket.id) {
+              <tr [class.sla-breach]="ticket.slaBreached">
+                <td>
+                  <span class="ticket-number">{{ ticket.ticketNumber }}</span>
+                </td>
+                <td>
+                  <div class="user-cell">
+                    <strong>{{ ticket.userName }}</strong>
+                    <small>{{ ticket.userType }}</small>
+                  </div>
+                </td>
+                <td>
+                  <div class="subject-cell">
+                    {{ ticket.subject }}
+                    <small>{{ ticket.conversations.length }} messages</small>
+                  </div>
+                </td>
+                <td>
+                  <span class="category-chip">{{ formatEnum(ticket.category) }}</span>
+                </td>
+                <td>
+                  <span class="priority-chip" [attr.data-priority]="ticket.priority">
+                    {{ formatEnum(ticket.priority) }}
+                  </span>
+                </td>
+                <td>
+                  <span class="status-chip" [attr.data-status]="ticket.status">
+                    {{ formatEnum(ticket.status) }}
+                  </span>
+                </td>
+                <td>
+                  @if (ticket.assignedTo) {
+                    <span>{{ ticket.assignedTo }}</span>
+                  } @else {
+                    <span class="text-muted">Unassigned</span>
+                  }
+                </td>
+                <td>
+                  @if (ticket.slaBreached) {
+                    <span class="sla-badge breach">BREACHED</span>
+                  } @else if (ticket.status === 'OPEN' || ticket.status === 'IN_PROGRESS') {
+                    <span class="sla-badge ok">Active</span>
+                  } @else {
+                    <span class="sla-badge met">MET</span>
+                  }
+                </td>
+                <td>
+                  <div class="time-cell">
+                    {{ formatDate(ticket.createdAt) }}
+                  </div>
+                </td>
+                <td>
+                  <div class="action-buttons">
+                    <button class="btn-icon" title="View Ticket">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                        <circle cx="12" cy="12" r="3"></circle>
+                      </svg>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="10" class="empty-state">
+                  <p>No tickets found</p>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <div class="pagination">
+        <div class="pagination-info">
+          Showing {{ getStartIndex() }} - {{ getEndIndex() }} of {{ filteredTickets().length }} tickets
+        </div>
+        <div class="pagination-controls">
+          <button class="btn-pagination" [disabled]="currentPage === 1" (click)="changePage(currentPage - 1)">
+            Previous
+          </button>
+          @for (page of getPageNumbers(); track page) {
+            <button class="btn-pagination" [class.active]="page === currentPage" (click)="changePage(page)">
+              {{ page }}
+            </button>
+          }
+          <button class="btn-pagination" [disabled]="currentPage === getTotalPages()" (click)="changePage(currentPage + 1)">
+            Next
+          </button>
+        </div>
+      </div>
+    </div>
+  
