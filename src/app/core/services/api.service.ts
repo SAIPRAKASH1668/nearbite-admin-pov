@@ -29,6 +29,19 @@ export class ApiService {
     return localStorage.getItem(this.JWT_KEY) || '';
   }
 
+  // ADMIN_API_KEY for ops endpoints (/api/v1/ops/*), sent as X-Api-Key.
+  private get adminKey(): string {
+    return localStorage.getItem('yd_admin_key') || '';
+  }
+
+  get hasAdminKey(): boolean {
+    return !!this.adminKey;
+  }
+
+  setAdminKey(key: string): void {
+    localStorage.setItem('yd_admin_key', (key || '').trim());
+  }
+
   get baseUrl(): string {
     return this.BASE_URLS[this.env];
   }
@@ -66,6 +79,11 @@ export class ApiService {
     }
     if (this.bypassToken) {
       headers = headers.set('X-Retool-Bypass', this.bypassToken);
+    }
+    // Ops/admin routes are gated by the ADMIN_API_KEY via X-Api-Key. Harmless on
+    // JWT routes (backend only reads it for /api/v1/ops/* prefixes).
+    if (this.adminKey) {
+      headers = headers.set('X-Api-Key', this.adminKey);
     }
     return headers;
   }
@@ -282,5 +300,29 @@ export class ApiService {
   // ─── Notifications ────────────────────────────────────────────────────────
   sendNotification(data: any) {
     return this.post<any>('/api/v1/notifications/send', data);
+  }
+
+  // ─── Rider Slots (admin/ops — requires ADMIN_API_KEY via X-Api-Key) ─────────
+  listRiderSlots() {
+    return this.get<any>('/api/v1/ops/rider-slots');
+  }
+
+  createRiderSlot(data: {
+    label?: string; date: string; startTime: string; endTime: string;
+    price: number; totalSeats: number; released?: boolean; releaseAt?: string;
+  }) {
+    return this.post<any>('/api/v1/ops/rider-slots', data);
+  }
+
+  updateRiderSlot(slotId: string, data: any) {
+    return this.put<any>(`/api/v1/ops/rider-slots/${slotId}`, data);
+  }
+
+  deleteRiderSlot(slotId: string) {
+    return this.delete<any>(`/api/v1/ops/rider-slots/${slotId}`);
+  }
+
+  releaseRiderSlot(slotId: string, releaseAt?: string) {
+    return this.post<any>(`/api/v1/ops/rider-slots/${slotId}/release`, releaseAt ? { releaseAt } : {});
   }
 }
