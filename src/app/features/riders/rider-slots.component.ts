@@ -43,15 +43,20 @@ function emptyForm(): SlotForm {
     </div>
 
     <!-- Admin key bar -->
-    <div class="card keybar" *ngIf="!api.hasAdminKey">
+    <div class="card keybar" *ngIf="!api.hasAdminKey || showKeyEdit">
       <div>
-        <strong>Admin API key required</strong>
-        <p class="text-tertiary">Slot management uses the ops endpoints (X-Api-Key). Paste the ADMIN_API_KEY to enable.</p>
+        <strong>Admin API key</strong>
+        <p class="text-tertiary">Ops endpoints need the <b>ADMIN_API_KEY</b> (sent as X-Api-Key) — not the mobile/web key. Dev default: <code>dev-admin-key-12345</code>.</p>
       </div>
       <div class="keybar-input">
         <input class="form-input" type="password" placeholder="ADMIN_API_KEY" [(ngModel)]="adminKeyInput" />
         <button class="btn btn-primary btn-sm" (click)="saveAdminKey()" [disabled]="!adminKeyInput.trim()">Save key</button>
+        <button class="btn btn-secondary btn-sm" *ngIf="api.hasAdminKey" (click)="showKeyEdit=false">Cancel</button>
       </div>
+    </div>
+    <div class="keybar-compact" *ngIf="api.hasAdminKey && !showKeyEdit">
+      <span class="text-tertiary">Admin key set ✓ · env: {{ api.currentEnv }}</span>
+      <button class="btn btn-ghost btn-xs" (click)="adminKeyInput=''; showKeyEdit=true">Change key</button>
     </div>
 
     <!-- Alerts -->
@@ -188,6 +193,7 @@ function emptyForm(): SlotForm {
     .keybar p { margin:4px 0 0; font-size:12px; }
     .keybar-input { display:flex; gap:8px; align-items:center; }
     .keybar-input .form-input { min-width:280px; }
+    .keybar-compact { display:flex; align-items:center; gap:10px; margin-bottom:12px; font-size:12px; }
     .check-row { display:flex; align-items:center; gap:8px; font-size:13px; color:var(--color-text-secondary); cursor:pointer; }
     .check-row input { width:16px; height:16px; }
   `]
@@ -206,6 +212,7 @@ export class RiderSlotsComponent implements OnInit {
 
   deleteTarget: any = null;
   adminKeyInput = '';
+  showKeyEdit = false;
 
   constructor(public api: ApiService) {}
 
@@ -223,6 +230,7 @@ export class RiderSlotsComponent implements OnInit {
   saveAdminKey(): void {
     this.api.setAdminKey(this.adminKeyInput);
     this.adminKeyInput = '';
+    this.showKeyEdit = false;
     this.load();
   }
 
