@@ -1,0 +1,11 @@
+{
+  "/api": {
+    "target": "https://htgicpllf2.execute-api.ap-south-1.amazonaws.com/default",
+    "secure": true,
+    "changeOrigin": true,
+    "pathRewrite": {
+      "^/api": "/api"
+    },
+    "logLevel": "debug"
+  }
+}

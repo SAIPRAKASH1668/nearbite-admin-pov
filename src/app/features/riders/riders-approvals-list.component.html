@@ -1,0 +1,97 @@
+<div class="riders-approvals-container">
+  <div class="header">
+    <h1>Rider Approvals</h1>
+    <button class="btn-refresh" (click)="refreshRiders()">
+      <i class="fas fa-sync"></i> Refresh
+    </button>
+  </div>
+
+  <!-- Status Tabs -->
+  <div class="status-tabs">
+    <button 
+      class="tab"
+      [class.active]="selectedStatus === RiderStatus.SIGNUP_DONE"
+      (click)="filterByStatus(RiderStatus.SIGNUP_DONE)">
+      Pending Approval
+      <span class="badge" *ngIf="getPendingCount() > 0">{{ getPendingCount() }}</span>
+    </button>
+    <button 
+      class="tab"
+      [class.active]="selectedStatus === RiderStatus.APPROVED"
+      (click)="filterByStatus(RiderStatus.APPROVED)">
+      Approved
+      <span class="badge success">{{ getApprovedCount() }}</span>
+    </button>
+    <button 
+      class="tab"
+      [class.active]="selectedStatus === RiderStatus.REJECTED"
+      (click)="filterByStatus(RiderStatus.REJECTED)">
+      Rejected
+      <span class="badge danger">{{ getRejectedCount() }}</span>
+    </button>
+  </div>
+
+  <!-- Loading State -->
+  <div *ngIf="loading" class="loading">
+    <div class="spinner"></div>
+    <p>Loading riders...</p>
+  </div>
+
+  <!-- Empty State -->
+  <div *ngIf="!loading && filteredRiders.length === 0" class="empty-state">
+    <i class="fas fa-inbox icon"></i>
+    <h3>No riders found</h3>
+    <p>There are no {{ selectedStatus === RiderStatus.SIGNUP_DONE ? 'pending' : selectedStatus === RiderStatus.APPROVED ? 'approved' : 'rejected' }} riders at the moment.</p>
+  </div>
+
+  <!-- Riders List -->
+  <div *ngIf="!loading && filteredRiders.length > 0" class="riders-grid">
+    <div class="rider-card" *ngFor="let rider of filteredRiders" (click)="viewRiderDetails(rider)">
+      <div class="rider-header">
+        <div class="rider-avatar">{{ getInitials(rider) }}</div>
+        <div class="rider-info">
+          <h3>{{ rider.firstName }} {{ rider.lastName }}</h3>
+          <p class="phone">{{ rider.phone }}</p>
+        </div>
+        <span class="status-badge" [class]="getStatusClass(rider.riderStatus)">
+          {{ getStatusLabel(rider.riderStatus) }}
+        </span>
+      </div>
+
+      <div class="rider-details">
+        <div class="detail-row">
+          <span class="label"><i class="fas fa-location-dot"></i> Address:</span>
+          <span class="value">{{ rider.address || 'Not provided' }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="label"><i class="fas fa-envelope"></i> Email:</span>
+          <span class="value">{{ rider.email || 'Not provided' }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="label"><i class="fas fa-id-card"></i> Aadhar:</span>
+          <span class="value">{{ rider.aadharNumber }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="label"><i class="fas fa-credit-card"></i> PAN:</span>
+          <span class="value">{{ rider.panNumber }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="label"><i class="fas fa-calendar"></i> Applied:</span>
+          <span class="value">{{ formatDate(rider.createdAt) }}</span>
+        </div>
+        <div class="detail-row" *ngIf="rider.approvedAt">
+          <span class="label"><i class="fas fa-check-circle"></i> Approved:</span>
+          <span class="value">{{ formatDate(rider.approvedAt) }}</span>
+        </div>
+        <div class="detail-row" *ngIf="rider.rejectionReason">
+          <span class="label"><i class="fas fa-times-circle"></i> Reason:</span>
+          <span class="value">{{ rider.rejectionReason }}</span>
+        </div>
+      </div>
+
+      <div class="rider-actions">
+        <button class="btn-view">View Details →</button>
+      </div>
+    </div>
+  </div>
+</div>

@@ -4,33 +4,40 @@
  */
 
 export enum OrderStatus {
-  PLACED = 'PLACED',
+  // Restaurant statuses
+  INITIATED = 'INITIATED',
+  PENDING = 'PENDING',
   CONFIRMED = 'CONFIRMED',
+  ACCEPTED = 'ACCEPTED',
+  
+  // Order assignment statuses
   PREPARING = 'PREPARING',
   READY_FOR_PICKUP = 'READY_FOR_PICKUP',
+  AWAITING_RIDER_ASSIGNMENT = 'AWAITING_RIDER_ASSIGNMENT',
+  OFFERED_TO_RIDER = 'OFFERED_TO_RIDER',
+  
+  // Rider statuses
+  RIDER_ASSIGNED = 'RIDER_ASSIGNED',
   PICKED_UP = 'PICKED_UP',
   OUT_FOR_DELIVERY = 'OUT_FOR_DELIVERY',
   DELIVERED = 'DELIVERED',
-  CANCELLED = 'CANCELLED',
-  REJECTED = 'REJECTED',
-  REFUNDED = 'REFUNDED'
+  CANCELLED = 'CANCELLED'
 }
 
+// Payment status from AWS Payment model
 export enum PaymentStatus {
-  PENDING = 'PENDING',
-  PROCESSING = 'PROCESSING',
-  COMPLETED = 'COMPLETED',
+  INITIATED = 'INITIATED',
+  SUCCESS = 'SUCCESS',
   FAILED = 'FAILED',
-  REFUND_INITIATED = 'REFUND_INITIATED',
   REFUNDED = 'REFUNDED'
 }
 
+// Payment method from AWS Payment model
 export enum PaymentMethod {
-  CARD = 'CARD',
   UPI = 'UPI',
-  NET_BANKING = 'NET_BANKING',
+  CARD = 'CARD',
   WALLET = 'WALLET',
-  CASH_ON_DELIVERY = 'CASH_ON_DELIVERY'
+  NETBANKING = 'NETBANKING'
 }
 
 export interface OrderItem {

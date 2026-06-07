@@ -1,579 +1,597 @@
-import { Component, OnInit, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { DashboardService } from '../../core/services';
-import { PlatformMetrics } from '../../core/models';
-import { Chart, registerables } from 'chart.js';
+import { Component, OnInit } from "@angular/core";
+import { CommonModule, DecimalPipe, SlicePipe } from "@angular/common";
+import { RouterModule } from "@angular/router";
+import { FormsModule } from "@angular/forms";
+import { forkJoin, of } from "rxjs";
+import { catchError } from "rxjs/operators";
+import { ApiService } from "../../core/services/api.service";
 
-Chart.register(...registerables);
+type TrendDirection = "up" | "down" | "flat";
+
+interface Trend {
+  direction: TrendDirection;
+  label: string;
+}
+
+interface KpiCard {
+  label: string;
+  value: number;
+  prefix?: string;
+  suffix?: string;
+  sub: string;
+  trend: Trend;
+  tone: "green" | "red" | "blue" | "amber";
+}
+
+type RangeMode = "daily" | "weekly" | "monthly" | "custom";
+type DashboardTab = "overview" | "orders" | "profit" | "restaurants" | "riders" | "customers" | "offers" | "alerts";
 
 @Component({
-  selector: 'app-dashboard',
+  selector: "app-dashboard",
   standalone: true,
-  imports: [CommonModule],
-  template: `
-    <div class="dashboard">
-      <div class="page-header">
-        <div>
-          <h1>Platform Overview</h1>
-          <p class="text-secondary">Real-time monitoring and key performance indicators</p>
-        </div>
-        <div class="header-actions">
-          <button class="btn btn-secondary btn-sm">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polyline points="23 4 23 10 17 10"></polyline>
-              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
-            </svg>
-            Refresh
-          </button>
-          <button class="btn btn-primary btn-sm">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-              <polyline points="7 10 12 15 17 10"></polyline>
-              <line x1="12" y1="15" x2="12" y2="3"></line>
-            </svg>
-            Export Report
-          </button>
-        </div>
-      </div>
-      
-      <!-- Real-time Metrics -->
-      <div class="metrics-grid">
-        <div class="metric-card">
-          <div class="metric-header">
-            <span class="metric-label">Active Orders</span>
-            <div class="status-dot online"></div>
-          </div>
-          <div class="metric-value">{{ metrics.activeOrders }}</div>
-          <div class="metric-footer">
-            <span class="text-success">↑ 12%</span> vs last hour
-          </div>
-        </div>
-        
-        <div class="metric-card">
-          <div class="metric-header">
-            <span class="metric-label">Online Riders</span>
-            <div class="status-dot online"></div>
-          </div>
-          <div class="metric-value">{{ metrics.activeRiders }}</div>
-          <div class="metric-footer">
-            <span class="text-warning">{{ metrics.activeRiders - 20 }}</span> on delivery
-          </div>
-        </div>
-        
-        <div class="metric-card">
-          <div class="metric-header">
-            <span class="metric-label">Orders Today</span>
-          </div>
-          <div class="metric-value">{{ metrics.ordersToday | number }}</div>
-          <div class="metric-footer">
-            <span class="text-success">↑ 18.3%</span> vs yesterday
-          </div>
-        </div>
-        
-        <div class="metric-card">
-          <div class="metric-header">
-            <span class="metric-label">Revenue Today</span>
-          </div>
-          <div class="metric-value">\${{ (metrics.revenueToday / 1000).toFixed(1) }}k</div>
-          <div class="metric-footer">
-            <span class="text-success">↑ 24.1%</span> vs yesterday
-          </div>
-        </div>
-        
-        <div class="metric-card">
-          <div class="metric-header">
-            <span class="metric-label">Completion Rate</span>
-          </div>
-          <div class="metric-value">{{ metrics.orderCompletionRate.toFixed(1) }}%</div>
-          <div class="metric-footer">
-            Target: <span class="text-primary">95%</span>
-          </div>
-        </div>
-        
-        <div class="metric-card">
-          <div class="metric-header">
-            <span class="metric-label">Avg Delivery Time</span>
-          </div>
-          <div class="metric-value">{{ metrics.avgDeliveryTime }} min</div>
-          <div class="metric-footer">
-            <span class="text-success">↓ 2min</span> improvement
-          </div>
-        </div>
-        
-        <div class="metric-card">
-          <div class="metric-header">
-            <span class="metric-label">System Uptime</span>
-          </div>
-          <div class="metric-value">{{ metrics.systemUptime }}%</div>
-          <div class="metric-footer">
-            <span class="text-success">Excellent</span>
-          </div>
-        </div>
-        
-        <div class="metric-card">
-          <div class="metric-header">
-            <span class="metric-label">API Latency</span>
-          </div>
-          <div class="metric-value">{{ metrics.apiLatency }}ms</div>
-          <div class="metric-footer">
-            <span class="text-success">Good</span> performance
-          </div>
-        </div>
-      </div>
-      
-      <!-- Charts Section -->
-      <div class="charts-grid">
-        <div class="card">
-          <h3>Revenue Trend (7 Days)</h3>
-          <canvas #revenueChart></canvas>
-        </div>
-        
-        <div class="card">
-          <h3>Order Status Distribution</h3>
-          <canvas #orderChart></canvas>
-        </div>
-      </div>
-      
-      <!-- Quick Actions -->
-      <div class="section">
-        <h3>Quick Actions</h3>
-        <div class="quick-actions">
-          <button class="action-card">
-            <div class="action-icon primary">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"></path>
-                <path d="M7 2v20"></path>
-              </svg>
-            </div>
-            <div class="action-content">
-              <div class="action-title">Approve Restaurant</div>
-              <div class="action-subtitle">8 pending</div>
-            </div>
-          </button>
-          
-          <button class="action-card">
-            <div class="action-icon warning">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="12" y1="1" x2="12" y2="23"></line>
-                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
-              </svg>
-            </div>
-            <div class="action-content">
-              <div class="action-title">Process Settlements</div>
-              <div class="action-subtitle">12 pending</div>
-            </div>
-          </button>
-          
-          <button class="action-card">
-            <div class="action-icon error">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-              </svg>
-            </div>
-            <div class="action-content">
-              <div class="action-title">Support Tickets</div>
-              <div class="action-subtitle">47 open</div>
-            </div>
-          </button>
-          
-          <button class="action-card">
-            <div class="action-icon success">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <rect x="1" y="3" width="15" height="13"></rect>
-                <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon>
-              </svg>
-            </div>
-            <div class="action-content">
-              <div class="action-title">Verify Riders</div>
-              <div class="action-subtitle">5 pending</div>
-            </div>
-          </button>
-        </div>
-      </div>
-      
-      <!-- Recent Activity -->
-      <div class="section">
-        <h3>Recent Activity</h3>
-        <div class="activity-list card">
-          <div class="activity-item" *ngFor="let activity of recentActivity">
-            <div class="activity-icon" [class]="'icon-' + activity.type">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="12" cy="12" r="10"></circle>
-                <polyline points="12 6 12 12 16 14"></polyline>
-              </svg>
-            </div>
-            <div class="activity-content">
-              <div class="activity-title">{{ activity.title }}</div>
-              <div class="activity-meta">{{ activity.user }} • {{ activity.time }}</div>
-            </div>
-            <span class="status-chip" [class]="'status-' + activity.status">{{ activity.statusText }}</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  `,
-  styles: [`
-    .dashboard {
-      max-width: 1600px;
-    }
-    
-    .page-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      margin-bottom: var(--space-xl);
-      
-      h1 {
-        margin-bottom: var(--space-xs);
-      }
-    }
-    
-    .header-actions {
-      display: flex;
-      gap: var(--space-sm);
-    }
-    
-    .metrics-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: var(--space-lg);
-      margin-bottom: var(--space-xl);
-    }
-    
-    .metric-card {
-      background: var(--color-bg-secondary);
-      border: 1px solid var(--color-border);
-      border-radius: 6px;
-      padding: var(--space-lg);
-      transition: all 0.2s;
-      
-      &:hover {
-        border-color: var(--color-primary);
-        box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.05);
-      }
-    }
-    
-    .metric-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: var(--space-sm);
-    }
-    
-    .metric-label {
-      font-size: 12px;
-      color: var(--color-text-secondary);
-      font-weight: 500;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-    
-    .metric-value {
-      font-size: 32px;
-      font-weight: 700;
-      color: var(--color-text-primary);
-      line-height: 1;
-      margin-bottom: var(--space-sm);
-    }
-    
-    .metric-footer {
-      font-size: 12px;
-      color: var(--color-text-tertiary);
-    }
-    
-    .section {
-      margin-bottom: var(--space-xl);
-      
-      h3 {
-        margin-bottom: var(--space-lg);
-      }
-    }
-    
-    .charts-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-      gap: var(--space-xl);
-      margin-bottom: var(--space-xl);
-      
-      .card {
-        h3 {
-          font-size: 14px;
-          margin-bottom: var(--space-lg);
-        }
-        
-        canvas {
-          max-height: 300px;
-        }
-      }
-    }
-    
-    .quick-actions {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-      gap: var(--space-lg);
-    }
-    
-    .action-card {
-      display: flex;
-      align-items: center;
-      gap: var(--space-lg);
-      background: var(--color-bg-secondary);
-      border: 1px solid var(--color-border);
-      border-radius: 6px;
-      padding: var(--space-lg);
-      cursor: pointer;
-      transition: all 0.2s;
-      text-align: left;
-      
-      &:hover {
-        border-color: var(--color-primary);
-        transform: translateY(-2px);
-        box-shadow: var(--shadow-md);
-      }
-    }
-    
-    .action-icon {
-      width: 48px;
-      height: 48px;
-      border-radius: 8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-      
-      &.primary {
-        background: rgba(255, 107, 53, 0.1);
-        color: var(--color-primary);
-      }
-      
-      &.success {
-        background: var(--color-success-bg);
-        color: var(--color-success);
-      }
-      
-      &.warning {
-        background: var(--color-warning-bg);
-        color: var(--color-warning);
-      }
-      
-      &.error {
-        background: var(--color-error-bg);
-        color: var(--color-error);
-      }
-    }
-    
-    .action-content {
-      flex: 1;
-    }
-    
-    .action-title {
-      font-size: 14px;
-      font-weight: 600;
-      color: var(--color-text-primary);
-      margin-bottom: 2px;
-    }
-    
-    .action-subtitle {
-      font-size: 12px;
-      color: var(--color-text-secondary);
-    }
-    
-    .activity-list {
-      padding: 0;
-    }
-    
-    .activity-item {
-      display: flex;
-      align-items: center;
-      gap: var(--space-md);
-      padding: var(--space-md) var(--space-lg);
-      border-bottom: 1px solid var(--color-border-light);
-      
-      &:last-child {
-        border-bottom: none;
-      }
-      
-      &:hover {
-        background: var(--color-bg-tertiary);
-      }
-    }
-    
-    .activity-icon {
-      width: 32px;
-      height: 32px;
-      border-radius: 6px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-      
-      &.icon-restaurant {
-        background: rgba(255, 107, 53, 0.1);
-        color: var(--color-primary);
-      }
-      
-      &.icon-order {
-        background: var(--color-info-bg);
-        color: var(--color-info);
-      }
-      
-      &.icon-rider {
-        background: var(--color-success-bg);
-        color: var(--color-success);
-      }
-    }
-    
-    .activity-content {
-      flex: 1;
-    }
-    
-    .activity-title {
-      font-size: 13px;
-      color: var(--color-text-primary);
-      margin-bottom: 2px;
-    }
-    
-    .activity-meta {
-      font-size: 11px;
-      color: var(--color-text-tertiary);
-    }
-  `]
+  imports: [CommonModule, RouterModule, FormsModule, DecimalPipe, SlicePipe],
+  templateUrl: "./dashboard.component.html",
+  styleUrl: "./dashboard.component.scss",
 })
-export class DashboardComponent implements OnInit, AfterViewInit {
-  @ViewChild('revenueChart') revenueChartRef!: ElementRef<HTMLCanvasElement>;
-  @ViewChild('orderChart') orderChartRef!: ElementRef<HTMLCanvasElement>;
-  
-  private revenueChart?: Chart;
-  private orderChart?: Chart;
+export class DashboardComponent implements OnInit {
+  loading = true;
+  analytics: any = null;
+  previousAnalytics: any = null;
 
-  metrics: PlatformMetrics = {
-    activeOrders: 0,
-    activeRiders: 0,
-    activeRestaurants: 0,
-    onlineCustomers: 0,
-    ordersToday: 0,
-    revenueToday: 0,
-    newCustomersToday: 0,
-    newRestaurantsToday: 0,
-    avgDeliveryTime: 0,
-    avgOrderPreparationTime: 0,
-    orderCompletionRate: 0,
-    orderCancellationRate: 0,
-    apiLatency: 0,
-    failedPaymentRate: 0,
-    systemUptime: 0,
-    errorRate: 0
-  };
-
-  recentActivity = [
-    { type: 'restaurant', title: 'New restaurant approved: The Golden Spoon', user: 'Sarah Johnson', time: '2 min ago', status: 'success', statusText: 'Approved' },
-    { type: 'order', title: 'Large order placed: $456.80', user: 'System', time: '5 min ago', status: 'info', statusText: 'New' },
-    { type: 'rider', title: 'Rider verified: John Martinez', user: 'David Kumar', time: '12 min ago', status: 'success', statusText: 'Verified' },
-    { type: 'restaurant', title: 'Restaurant suspended: Pizza Corner', user: 'Sarah Johnson', time: '1 hour ago', status: 'warning', statusText: 'Suspended' }
+  rangeStart = DashboardComponent.todayIST();
+  rangeEnd = DashboardComponent.todayIST();
+  rangeMode: RangeMode = "daily";
+  activeTab: DashboardTab = "overview";
+  tabs: { key: DashboardTab; label: string }[] = [
+    { key: "overview", label: "Overview" },
+    { key: "orders", label: "Orders" },
+    { key: "profit", label: "Profit" },
+    { key: "restaurants", label: "Restaurants" },
+    { key: "riders", label: "Riders" },
+    { key: "customers", label: "Customers" },
+    { key: "offers", label: "Offers" },
+    { key: "alerts", label: "Alerts" },
   ];
 
-  constructor(private dashboardService: DashboardService) {}
+  riders: any[] = [];
+  restaurants: any[] = [];
+  liveOrders: any[] = [];
+  kpis: KpiCard[] = [];
+  orderSummary: { label: string; value: number; tone: string }[] = [];
+  revenuePoints = "";
+  revenueArea = "";
+  revenueMax = 0;
+  revenueTrend: any[] = [];
+  orderTrend: any[] = [];
+  topRestaurants: any[] = [];
+  topItems: any[] = [];
+  statusBreakdown: any[] = [];
+  insights: { title: string; value: string; tone: string }[] = [];
+  daypartRows: any[] = [];
+  profitRows: { label: string; value: string; tone: string }[] = [];
+  paymentRows: any[] = [];
+  couponRows: any[] = [];
+  customerCohort: any[] = [];
+  topRiders: any[] = [];
+  alertRows: { title: string; detail: string; tone: string }[] = [];
 
-  ngOnInit() {
-    this.dashboardService.metrics$.subscribe(metrics => {
-      this.metrics = metrics;
-    });
+  constructor(private api: ApiService) {}
+
+  ngOnInit(): void {
+    this.loadAll();
   }
-  
-  ngAfterViewInit() {
-    // Initialize charts after view is ready
-    setTimeout(() => this.initializeCharts(), 100);
+
+  private static todayIST(): string {
+    return new Date(Date.now() + 5.5 * 60 * 60 * 1000).toISOString().slice(0, 10);
   }
-  
-  private initializeCharts() {
-    this.createRevenueChart();
-    this.createOrderChart();
+
+  private static addDays(date: string, days: number): string {
+    const d = new Date(`${date}T00:00:00`);
+    d.setDate(d.getDate() + days);
+    return d.toISOString().slice(0, 10);
   }
-  
-  private createRevenueChart() {
-    const ctx = this.revenueChartRef.nativeElement.getContext('2d');
-    if (!ctx) return;
-    
-    this.revenueChart = new Chart(ctx, {
-      type: 'line',
-      data: {
-        labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-        datasets: [{
-          label: 'Revenue ($)',
-          data: [18400, 22300, 19800, 24100, 26700, 31200, 28900],
-          borderColor: '#FF6B35',
-          backgroundColor: 'rgba(255, 107, 53, 0.1)',
-          tension: 0.4,
-          fill: true,
-          pointRadius: 4,
-          pointHoverRadius: 6
-        }]
+
+  private static addMonths(date: string, months: number): string {
+    const d = new Date(`${date}T00:00:00`);
+    const day = d.getDate();
+    d.setDate(1);
+    d.setMonth(d.getMonth() + months);
+    const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+    d.setDate(Math.min(day, lastDay));
+    return d.toISOString().slice(0, 10);
+  }
+
+  private static daysBetween(start: string, end: string): number {
+    const a = new Date(`${start}T00:00:00`).getTime();
+    const b = new Date(`${end}T00:00:00`).getTime();
+    return Math.max(1, Math.round((b - a) / 86400000) + 1);
+  }
+
+  get rangeLabel(): string {
+    const today = DashboardComponent.todayIST();
+    const yesterday = DashboardComponent.addDays(today, -1);
+    if (this.rangeStart === today && this.rangeEnd === today) return "Today";
+    if (this.rangeStart === yesterday && this.rangeEnd === yesterday) return "Yesterday";
+    if (this.rangeStart === this.rangeEnd) return this.rangeStart;
+    return `${this.rangeStart} to ${this.rangeEnd}`;
+  }
+
+  get activeRiders(): number {
+    return this.riders.filter((r) => r.isActive).length;
+  }
+
+  get busyRiders(): number {
+    return this.riders.filter((r) => r.workingOnOrder?.length > 0).length;
+  }
+
+  get activeOrders(): number {
+    return this.riders.reduce((sum, r) => sum + (r.workingOnOrder?.length || 0), 0);
+  }
+
+  get restaurantsOnline(): number {
+    return this.restaurants.filter((r) => r.isOpen).length;
+  }
+
+  setRange(range: "daily" | "weekly" | "monthly"): void {
+    const today = DashboardComponent.todayIST();
+    this.rangeMode = range;
+    if (range === "daily") {
+      this.rangeStart = today;
+      this.rangeEnd = today;
+    } else if (range === "weekly") {
+      this.rangeStart = DashboardComponent.addDays(today, -6);
+      this.rangeEnd = today;
+    } else {
+      this.rangeStart = `${today.slice(0, 8)}01`;
+      this.rangeEnd = today;
+    }
+    this.loadAll();
+  }
+
+  setCustomRange(): void {
+    this.rangeMode = "custom";
+    this.loadAll();
+  }
+
+  refresh(): void {
+    this.loadAll();
+  }
+
+  setTab(tab: DashboardTab): void {
+    this.activeTab = tab;
+  }
+
+  loadAll(): void {
+    this.loading = true;
+    const previous = this.previousRange();
+
+    forkJoin({
+      analytics: this.api.getAnalyticsDashboard(this.rangeStart, this.rangeEnd).pipe(catchError(() => of(null))),
+      previous: this.api.getAnalyticsDashboard(previous.start, previous.end).pipe(catchError(() => of(null))),
+      ridersRes: this.api.listRiders().pipe(catchError(() => of({ riders: [] }))),
+      restaurantsRes: this.api.listRestaurants().pipe(catchError(() => of({ restaurants: [] }))),
+    }).subscribe({
+      next: ({ analytics, previous, ridersRes, restaurantsRes }: any) => {
+        this.analytics = analytics;
+        this.previousAnalytics = previous;
+        this.riders = ridersRes?.riders || [];
+        this.restaurants = restaurantsRes?.restaurants || [];
+        this.buildDashboard();
+        this.loadLiveOrders();
+        this.loading = false;
       },
-      options: {
-        responsive: true,
-        maintainAspectRatio: true,
-        plugins: {
-          legend: {
-            display: false
-          },
-          tooltip: {
-            backgroundColor: '#1a1f29',
-            titleColor: '#e8eaed',
-            bodyColor: '#e8eaed',
-            borderColor: '#3c4248',
-            borderWidth: 1
-          }
-        },
-        scales: {
-          y: {
-            beginAtZero: true,
-            ticks: { color: '#9aa0a6' },
-            grid: { color: '#2d3339' }
-          },
-          x: {
-            ticks: { color: '#9aa0a6' },
-            grid: { color: '#2d3339' }
-          }
-        }
-      }
+      error: () => {
+        this.loading = false;
+      },
     });
   }
-  
-  private createOrderChart() {
-    const ctx = this.orderChartRef.nativeElement.getContext('2d');
-    if (!ctx) return;
-    
-    this.orderChart = new Chart(ctx, {
-      type: 'doughnut',
-      data: {
-        labels: ['Delivered', 'In Progress', 'Cancelled'],
-        datasets: [{
-          data: [2456, 342, 49],
-          backgroundColor: ['#34a853', '#4285f4', '#ea4335'],
-          borderWidth: 0
-        }]
+
+  private previousRange(): { start: string; end: string } {
+    if (this.rangeMode === "monthly") {
+      return {
+        start: DashboardComponent.addMonths(this.rangeStart, -1),
+        end: DashboardComponent.addMonths(this.rangeEnd, -1),
+      };
+    }
+
+    const days = DashboardComponent.daysBetween(this.rangeStart, this.rangeEnd);
+    const end = DashboardComponent.addDays(this.rangeStart, -1);
+    return { start: DashboardComponent.addDays(end, -(days - 1)), end };
+  }
+
+  private buildDashboard(): void {
+    const summary = this.analytics?.summary || {};
+    const prev = this.previousAnalytics?.summary || {};
+    const orders = summary.orders || {};
+    const prevOrders = prev.orders || {};
+    const platform = summary.platformRevenue || {};
+    const prevPlatform = prev.platformRevenue || {};
+    const payments = summary.payments || {};
+    const prevPayments = prev.payments || {};
+    const customers = summary.customers || {};
+    const prevCustomers = prev.customers || {};
+
+    const deliveredGmv = this.num(orders.deliveredGmv ?? orders.gmv);
+    const cancelledGmv = this.num(orders.cancelledGmv);
+    const platformRevenue = this.num(platform.finalPayout);
+    const deliveredOrders = this.num(orders.delivered);
+    const totalOrders = this.num(orders.total);
+    const paymentSuccess = this.num(payments.successRatePct);
+    const repeatRate = this.num(customers.repeatRatePct);
+
+    this.kpis = [
+      {
+        label: "Delivered GMV",
+        value: deliveredGmv,
+        prefix: "₹",
+        sub: `${deliveredOrders} delivered orders`,
+        trend: this.trend(deliveredGmv, this.num(prevOrders.deliveredGmv ?? prevOrders.gmv)),
+        tone: "green",
       },
-      options: {
-        responsive: true,
-        maintainAspectRatio: true,
-        plugins: {
-          legend: {
-            position: 'bottom',
-            labels: {
-              color: '#e8eaed',
-              padding: 12,
-              font: { size: 12 }
-            }
-          },
-          tooltip: {
-            backgroundColor: '#1a1f29',
-            titleColor: '#e8eaed',
-            bodyColor: '#e8eaed',
-            borderColor: '#3c4248',
-            borderWidth: 1
-          }
-        }
-      }
+      {
+        label: "Platform Revenue",
+        value: platformRevenue,
+        prefix: "₹",
+        sub: "Delivered orders only",
+        trend: this.trend(platformRevenue, this.num(prevPlatform.finalPayout)),
+        tone: "blue",
+      },
+      {
+        label: "Orders",
+        value: totalOrders,
+        sub: `${deliveredOrders} delivered`,
+        trend: this.trend(totalOrders, this.num(prevOrders.total)),
+        tone: "amber",
+      },
+      {
+        label: "Cancelled GMV",
+        value: cancelledGmv,
+        prefix: "₹",
+        sub: `${this.num(orders.cancelled)} cancelled orders`,
+        trend: this.trend(cancelledGmv, this.num(prevOrders.cancelledGmv), true),
+        tone: "red",
+      },
+      {
+        label: "AOV",
+        value: this.num(orders.aov),
+        prefix: "₹",
+        sub: "Delivered orders only",
+        trend: this.trend(this.num(orders.aov), this.num(prevOrders.aov)),
+        tone: "green",
+      },
+      {
+        label: "Payment Success",
+        value: paymentSuccess,
+        suffix: "%",
+        sub: `${this.num(payments.successful)} successful`,
+        trend: this.trend(paymentSuccess, this.num(prevPayments.successRatePct)),
+        tone: "blue",
+      },
+      {
+        label: "Repeat Customers",
+        value: repeatRate,
+        suffix: "%",
+        sub: `${this.num(customers.unique)} unique customers`,
+        trend: this.trend(repeatRate, this.num(prevCustomers.repeatRatePct)),
+        tone: "green",
+      },
+      {
+        label: "Active Riders",
+        value: this.activeRiders,
+        sub: `${this.busyRiders} currently busy`,
+        trend: { direction: "flat", label: `${this.riders.length} total riders` },
+        tone: "amber",
+      },
+    ];
+
+    this.orderSummary = [
+      { label: "Live active", value: this.activeOrders, tone: "blue" },
+      { label: "Delivered", value: deliveredOrders, tone: "green" },
+      { label: "Cancelled", value: this.num(orders.cancelled), tone: "red" },
+      { label: "Created", value: totalOrders, tone: "neutral" },
+      { label: "Online restaurants", value: this.restaurantsOnline, tone: "green" },
+    ];
+
+    this.statusBreakdown = (this.analytics?.charts?.statusBreakdown || []).slice(0, 8);
+    this.revenueTrend = this.analytics?.charts?.revenueByDay || [];
+    this.orderTrend = this.analytics?.charts?.ordersByDay || [];
+    this.topRestaurants = (this.analytics?.charts?.topRestaurants || []).slice(0, 5);
+    this.topItems = this.buildTopItems(this.analytics?.charts?.restaurantStats || []);
+    this.topRiders = (this.analytics?.charts?.topRiders || []).slice(0, 5);
+    this.paymentRows = (this.analytics?.charts?.paymentMethodBreakdown || []).slice(0, 5);
+    this.couponRows = (this.analytics?.charts?.couponUsage || []).slice(0, 5);
+    this.customerCohort = this.analytics?.charts?.customerCohort || [];
+    this.buildRevenueChart();
+    this.buildInsights();
+    this.buildDayparts();
+    this.buildProfitBreakdown();
+    this.buildAlerts();
+  }
+
+  private buildRevenueChart(): void {
+    const values = this.orderTrend.map((d) => this.num(d.deliveredGmv ?? d.gmv));
+    this.revenueMax = Math.max(...values, 1);
+    if (!values.length) {
+      this.revenuePoints = "";
+      this.revenueArea = "";
+      return;
+    }
+
+    const points = values.map((value, index) => {
+      const x = values.length === 1 ? 50 : (index / (values.length - 1)) * 100;
+      const y = 94 - (value / this.revenueMax) * 78;
+      return `${x.toFixed(2)},${y.toFixed(2)}`;
     });
+    this.revenuePoints = points.join(" ");
+    this.revenueArea = `0,100 ${points.join(" ")} 100,100`;
+  }
+
+  private buildTopItems(restaurants: any[]): any[] {
+    const map = new Map<string, any>();
+    restaurants.forEach((restaurant) => {
+      (restaurant.topItems || []).forEach((item: any) => {
+        const key = item.itemId || item.name;
+        const existing = map.get(key) || {
+          name: item.name || "Item",
+          quantity: 0,
+          revenue: 0,
+        };
+        existing.quantity += this.num(item.quantity);
+        existing.revenue += this.num(item.revenue);
+        map.set(key, existing);
+      });
+    });
+    return Array.from(map.values())
+      .sort((a, b) => b.quantity - a.quantity)
+      .slice(0, 5);
+  }
+
+  private buildInsights(): void {
+    const orders = this.analytics?.summary?.orders || {};
+    const payments = this.analytics?.summary?.payments || {};
+    const coupons = this.analytics?.summary?.coupons || {};
+    const platform = this.analytics?.summary?.platformRevenue || {};
+
+    this.insights = [
+      {
+        title: "Demand created",
+        value: `₹${this.compact(this.num(orders.createdGmv))}`,
+        tone: "blue",
+      },
+      {
+        title: "Lost to cancellations",
+        value: `₹${this.compact(this.num(orders.cancelledGmv))}`,
+        tone: "red",
+      },
+      {
+        title: "Coupon cost",
+        value: `₹${this.compact(this.num(coupons.discountValue))}`,
+        tone: "amber",
+      },
+      {
+        title: "Payment failures",
+        value: `${this.num(payments.failed)} failed`,
+        tone: this.num(payments.failed) > 0 ? "red" : "green",
+      },
+      {
+        title: "Rider subsidy",
+        value: `₹${this.compact(this.num(platform.riderDeliverySubsidy))}`,
+        tone: "amber",
+      },
+    ];
+  }
+
+  private buildDayparts(): void {
+    const rows = this.analytics?.charts?.daypartBreakdown || this.fallbackDayparts();
+    const previousRows = this.previousAnalytics?.charts?.daypartBreakdown || [];
+    const previousByKey = new Map(previousRows.map((row: any) => [row.key, row]));
+    const maxOrders = Math.max(...rows.map((row: any) => this.num(row.orders)), 1);
+
+    this.daypartRows = rows.map((row: any) => {
+      const previous: any = previousByKey.get(row.key) || {};
+      const orders = this.num(row.orders);
+      return {
+        ...row,
+        barPct: (orders / maxOrders) * 100,
+        deliveredGmv: this.num(row.deliveredGmv),
+        aov: this.num(row.aov),
+        conversionPct: this.num(row.conversionPct),
+        sharePct: this.num(row.sharePct),
+        peakHourLabel: row.peakHourLabel || "-",
+        trend: this.trend(orders, this.num(previous.orders)),
+      };
+    });
+  }
+
+  private fallbackDayparts(): any[] {
+    const hourly = this.analytics?.charts?.hourlyDistribution || [];
+    const buckets = [
+      { key: "morning", label: "Morning", window: "6 AM - 11:59 AM", hours: [6, 7, 8, 9, 10, 11] },
+      { key: "afternoon", label: "Afternoon", window: "12 PM - 4:59 PM", hours: [12, 13, 14, 15, 16] },
+      { key: "evening", label: "Evening", window: "5 PM - 6:59 PM", hours: [17, 18] },
+      { key: "dinner", label: "Dinner", window: "7 PM - 5:59 AM", hours: [19, 20, 21, 22, 23, 0, 1, 2, 3, 4, 5] },
+    ];
+    return buckets.map((bucket) => {
+      const hours = hourly.filter((row: any) => bucket.hours.includes(this.num(row.hour)));
+      const peak = hours.reduce((best: any, row: any) => this.num(row.orders) > this.num(best?.orders) ? row : best, null);
+      return {
+        key: bucket.key,
+        label: bucket.label,
+        window: bucket.window,
+        orders: hours.reduce((sum: number, row: any) => sum + this.num(row.orders), 0),
+        delivered: 0,
+        deliveredGmv: 0,
+        aov: 0,
+        conversionPct: 0,
+        sharePct: 0,
+        peakHourLabel: peak ? this.hourLabel(this.num(peak.hour)) : "-",
+      };
+    });
+  }
+
+  private buildProfitBreakdown(): void {
+    const summary = this.analytics?.summary || {};
+    const orders = summary.orders || {};
+    const platform = summary.platformRevenue || {};
+    const restaurant = summary.restaurantRevenueFromOrders || {};
+    const rider = summary.riderRevenueFromOrders || {};
+    const govt = summary.govtRevenue || {};
+    const coupons = summary.coupons || {};
+
+    this.profitRows = [
+      { label: "Delivered GMV", value: `₹${this.compact(this.num(orders.deliveredGmv ?? orders.gmv))}`, tone: "green" },
+      { label: "Restaurant payout", value: `- ₹${this.compact(this.num(restaurant.finalPayout))}`, tone: "red" },
+      { label: "Rider payout", value: `- ₹${this.compact(this.num(rider.finalPayout))}`, tone: "red" },
+      { label: "Govt GST", value: `- ₹${this.compact(this.num(govt.totalGst))}`, tone: "red" },
+      { label: "Coupon cost", value: `- ₹${this.compact(this.num(coupons.discountValue))}`, tone: "amber" },
+      { label: "Platform net", value: `₹${this.compact(this.num(platform.finalPayout))}`, tone: "green" },
+    ];
+  }
+
+  private buildAlerts(): void {
+    const orders = this.analytics?.summary?.orders || {};
+    const payments = this.analytics?.summary?.payments || {};
+    const customers = this.analytics?.summary?.customers || {};
+    const signupRange = this.analytics?.summary?.signupConversion?.range || {};
+    const riderTable = this.analytics?.summary?.riderEarningsTable || {};
+    const bestDaypart = [...this.daypartRows].sort((a, b) => this.num(b.orders) - this.num(a.orders))[0];
+    const worstDaypart = [...this.daypartRows].filter((row) => this.num(row.orders) > 0).sort((a, b) => this.num(a.orders) - this.num(b.orders))[0];
+    const cancelRate = this.num(orders.total) ? (this.num(orders.cancelled) / this.num(orders.total)) * 100 : 0;
+
+    this.alertRows = [
+      {
+        title: bestDaypart ? `${bestDaypart.label} is the strongest demand window` : "No demand window yet",
+        detail: bestDaypart ? `${bestDaypart.orders} orders, peak around ${bestDaypart.peakHourLabel}. Staff riders and restaurants around this slot.` : "Orders will appear here once analytics has data.",
+        tone: "green",
+      },
+      {
+        title: worstDaypart ? `${worstDaypart.label} is the weakest window` : "Low-volume window unavailable",
+        detail: worstDaypart ? `${worstDaypart.orders} orders in ${worstDaypart.window}. Good slot for targeted offers or push notifications.` : "Not enough order data to identify weak demand.",
+        tone: "amber",
+      },
+      {
+        title: cancelRate > 5 ? "Cancellation rate needs attention" : "Cancellation rate is under control",
+        detail: `${cancelRate.toFixed(1)}% cancellation rate in this period.`,
+        tone: cancelRate > 5 ? "red" : "green",
+      },
+      {
+        title: this.num(payments.successRatePct) < 90 ? "Payment success is below target" : "Payment success looks healthy",
+        detail: `${this.num(payments.successRatePct).toFixed(1)}% payment success across ${this.num(payments.totalAttempts)} attempts.`,
+        tone: this.num(payments.successRatePct) < 90 ? "red" : "green",
+      },
+      {
+        title: "COD cash exposure",
+        detail: `₹${this.compact(this.num(riderTable.codHeldByRiders))} held by riders. Reconcile COD cash daily.`,
+        tone: this.num(riderTable.codHeldByRiders) > 0 ? "amber" : "green",
+      },
+      {
+        title: "Repeat customer health",
+        detail: `${this.num(customers.repeatRatePct).toFixed(1)}% repeat rate. Push comeback offers if this drops.`,
+        tone: this.num(customers.repeatRatePct) < 25 ? "amber" : "green",
+      },
+      {
+        title: this.num(signupRange.signups) ? (this.num(signupRange.orderRatePct) < 20 ? "Signup activation is weak" : "Signup activation looks healthy") : "No new signup activation data",
+        detail: this.num(signupRange.signups)
+          ? `${this.num(signupRange.orderedInRange)} of ${this.num(signupRange.signups)} new signups ordered in this range. Target ${this.num(signupRange.notOrderedEver)} not-yet-ordered users.`
+          : "New signup conversion appears once customers sign up in the selected range.",
+        tone: this.num(signupRange.signups) ? (this.num(signupRange.orderRatePct) < 20 ? "amber" : "green") : "blue",
+      },
+    ];
+  }
+
+  private loadLiveOrders(): void {
+    const activeRiders = this.riders.filter((r) => r.workingOnOrder?.length > 0);
+    if (!activeRiders.length) {
+      this.liveOrders = [];
+      return;
+    }
+
+    const calls = activeRiders.map((r) =>
+      this.api.getOrdersByRider(r.riderId, undefined, 20).pipe(catchError(() => of({ orders: [] })))
+    );
+
+    forkJoin(calls).subscribe((results: any[]) => {
+      const seen = new Set<string>();
+      const liveStatuses = new Set([
+        "CONFIRMED",
+        "ACCEPTED",
+        "PREPARING",
+        "READY_FOR_PICKUP",
+        "AWAITING_RIDER_ASSIGNMENT",
+        "OFFERED_TO_RIDER",
+        "RIDER_ASSIGNED",
+        "PICKED_UP",
+        "OUT_FOR_DELIVERY",
+      ]);
+
+      this.liveOrders = results
+        .flatMap((res) => res.orders || [])
+        .filter((order) => {
+          if (seen.has(order.orderId) || !liveStatuses.has(order.status)) return false;
+          seen.add(order.orderId);
+          return true;
+        })
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        .slice(0, 8);
+    });
+  }
+
+  trend(current: number, previous: number, inverse = false): Trend {
+    if (!previous && !current) return { direction: "flat", label: "No change" };
+    if (!previous) {
+      return { direction: inverse ? "down" : "up", label: "New activity" };
+    }
+    const pct = ((current - previous) / Math.abs(previous)) * 100;
+    const direction: TrendDirection = Math.abs(pct) < 0.5 ? "flat" : pct > 0 ? "up" : "down";
+    const adjusted = inverse && direction === "up" ? "down" : inverse && direction === "down" ? "up" : direction;
+    return {
+      direction: adjusted,
+      label: `${pct >= 0 ? "+" : ""}${pct.toFixed(1)}% vs previous`,
+    };
+  }
+
+  maxOrderCount(): number {
+    return Math.max(...this.orderTrend.map((d) => this.num(d.orders)), 1);
+  }
+
+  maxCouponUses(): number {
+    return Math.max(...this.couponRows.map((d) => this.num(d.uses)), 1);
+  }
+
+  maxRiderDeliveries(): number {
+    return Math.max(...this.topRiders.map((d) => this.num(d.deliveries)), 1);
+  }
+
+  showAxisLabel(index: number, total: number): boolean {
+    if (total <= 12) return true;
+    const step = Math.ceil(total / 8);
+    return index === 0 || index === total - 1 || index % step === 0;
+  }
+
+  hourLabel(hour: number): string {
+    const suffix = hour < 12 ? "AM" : "PM";
+    const display = hour % 12 || 12;
+    return `${display} ${suffix}`;
+  }
+
+  compact(value: number): string {
+    if (Math.abs(value) >= 10000000) return `${(value / 10000000).toFixed(1)}Cr`;
+    if (Math.abs(value) >= 100000) return `${(value / 100000).toFixed(1)}L`;
+    if (Math.abs(value) >= 1000) return `${(value / 1000).toFixed(1)}K`;
+    return `${Math.round(value)}`;
+  }
+
+  initials(value: string): string {
+    return String(value || "NA")
+      .split(" ")
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase())
+      .join("") || "NA";
+  }
+
+  private num(value: any): number {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
   }
 }

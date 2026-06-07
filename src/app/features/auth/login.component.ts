@@ -137,6 +137,11 @@ import { AuthService } from '../../core/services';
         margin-bottom: var(--space-xs);
       }
     }
+
+    @media (max-width: 480px) {
+      .login-page { padding: var(--space-md); }
+      .login-form { padding: var(--space-lg); }
+    }
   `]
 })
 export class LoginComponent {

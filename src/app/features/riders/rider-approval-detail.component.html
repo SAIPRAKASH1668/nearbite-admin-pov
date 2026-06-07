@@ -1,0 +1,185 @@
+<div class="rider-detail-container">
+  <!-- Loading State -->
+  <div *ngIf="loading" class="loading">
+    <div class="spinner"></div>
+    <p>Loading rider details...</p>
+  </div>
+
+  <!-- Error State -->
+  <div *ngIf="error && !loading" class="error-state">
+    <i class="fas fa-exclamation-triangle icon"></i>
+    <h3>Rider not found</h3>
+    <p>{{ error }}</p>
+    <button class="btn-back" (click)="goBack()">
+      <i class="fas fa-arrow-left"></i>
+      <span>Back to List</span>
+    </button>
+  </div>
+
+  <!-- Rider Details -->
+  <div *ngIf="rider && !loading" class="detail-content">
+    <!-- Top Bar -->
+    <div class="top-bar">
+      <button class="btn-back-minimal" (click)="goBack()">
+        <i class="fas fa-arrow-left"></i>
+      </button>
+      <span class="status-badge-minimal" [class]="getStatusClass(rider.riderStatus)">
+        <i class="fas" [class.fa-clock]="rider.riderStatus === RiderStatus.SIGNUP_DONE"
+           [class.fa-check-circle]="rider.riderStatus === RiderStatus.APPROVED"
+           [class.fa-times-circle]="rider.riderStatus === RiderStatus.REJECTED"></i>
+        {{ getStatusLabel(rider.riderStatus) }}
+      </span>
+    </div>
+
+    <!-- Single Unified Panel -->
+    <div class="unified-panel">
+      <!-- Header Section -->
+      <div class="panel-header">
+        <div class="rider-avatar-small">
+          <span>{{ getInitials(rider) }}</span>
+        </div>
+        <div class="rider-info">
+          <h1>{{ rider.firstName }} {{ rider.lastName }}</h1>
+          <div class="rider-meta">
+            <span><i class="fas fa-phone"></i>{{ rider.phone }}</span>
+            <span><i class="fas fa-id-badge"></i>{{ rider.riderId }}</span>
+            <span><i class="fas fa-calendar"></i>{{ formatDate(rider.createdAt) }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Main Content Grid -->
+      <div class="panel-content">
+        <!-- Left Column: Personal Details -->
+        <div class="details-section">
+          <h3 class="section-title">Personal Details</h3>
+          <div class="detail-grid">
+            <div class="detail-item">
+              <label>Email</label>
+              <span>{{ rider.email || '—' }}</span>
+            </div>
+            <div class="detail-item">
+              <label>Date of Birth</label>
+              <span>{{ rider.dateOfBirth || '—' }}</span>
+            </div>
+            <div class="detail-item full-width">
+              <label>Address</label>
+              <span>{{ rider.address || '—' }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Column: KYC Documents -->
+        <div class="kyc-section">
+          <h3 class="section-title">KYC Documents</h3>
+          <div class="kyc-compact">
+            <div class="doc-compact">
+              <div class="doc-info">
+                <strong>Aadhar</strong>
+                <code>{{ rider.aadharNumber }}</code>
+              </div>
+              <div class="doc-thumb" *ngIf="rider.aadharImageUrl" (click)="expandImage(rider.aadharImageUrl, 'Aadhar Card')">
+                <img [src]="rider.aadharImageUrl" alt="Aadhar" (error)="onImageError($event)">
+                <div class="thumb-hover"><i class="fas fa-search-plus"></i></div>
+              </div>
+            </div>
+            <div class="doc-compact">
+              <div class="doc-info">
+                <strong>PAN</strong>
+                <code>{{ rider.panNumber }}</code>
+              </div>
+              <div class="doc-thumb" *ngIf="rider.panImageUrl" (click)="expandImage(rider.panImageUrl, 'PAN Card')">
+                <img [src]="rider.panImageUrl" alt="PAN" (error)="onImageError($event)">
+                <div class="thumb-hover"><i class="fas fa-search-plus"></i></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Approval Status (if exists) -->
+      <div class="approval-info" *ngIf="rider.approvedAt || rider.rejectionReason">
+        <div class="approval-item" *ngIf="rider.approvedAt">
+          <i class="fas fa-check-circle"></i>
+          <span>Approved on {{ formatDate(rider.approvedAt) }}</span>
+        </div>
+        <div class="approval-item error" *ngIf="rider.rejectionReason">
+          <i class="fas fa-times-circle"></i>
+          <span>Rejected: {{ rider.rejectionReason }}</span>
+        </div>
+      </div>
+
+      <!-- Action Buttons (floating at bottom right) -->
+      <div class="action-buttons" *ngIf="rider.riderStatus === RiderStatus.SIGNUP_DONE">
+        <button class="btn-action approve" (click)="showApproveConfirm = true" [disabled]="actionLoading">
+          <i class="fas fa-check"></i>
+          Approve
+        </button>
+        <button class="btn-action reject" (click)="showRejectModal = true" [disabled]="actionLoading">
+          <i class="fas fa-times"></i>
+          Reject
+        </button>
+      </div>
+    </div>
+
+    <!-- Success Message -->
+    <div class="success-toast" *ngIf="successMessage">
+      <i class="fas fa-check-circle"></i>
+      <span>{{ successMessage }}</span>
+    </div>
+  </div>
+
+  <!-- Image Expand Modal -->
+  <div class="image-modal" *ngIf="showImageModal" (click)="closeImageModal()">
+    <button class="modal-close" (click)="closeImageModal()">
+      <i class="fas fa-times"></i>
+    </button>
+    <h3 class="modal-title">{{ selectedImageTitle }}</h3>
+    <div class="modal-image-wrapper" (click)="$event.stopPropagation()">
+      <img [src]="selectedImage" alt="{{ selectedImageTitle }}">
+    </div>
+  </div>
+
+  <!-- Approve Confirmation Modal -->
+  <div class="confirm-modal-overlay" *ngIf="showApproveConfirm" (click)="showApproveConfirm = false">
+    <div class="confirm-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div class="icon success">
+          <i class="fas fa-check-circle"></i>
+        </div>
+        <h3>Approve Rider?</h3>
+        <p>Are you sure you want to approve <strong>{{ rider?.firstName }} {{ rider?.lastName }}</strong>? The rider will be able to start accepting orders after approval.</p>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-cancel" (click)="showApproveConfirm = false">Cancel</button>
+        <button class="btn-confirm-success" (click)="approveRider()">Approve</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reject Modal -->
+  <div class="reject-modal-overlay" *ngIf="showRejectModal" (click)="showRejectModal = false">
+    <div class="reject-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Reject Rider Application</h3>
+        <p>Please provide a reason for rejecting <strong>{{ rider?.firstName }} {{ rider?.lastName }}</strong>:</p>
+      </div>
+      <div class="modal-body">
+        <label>Rejection Reason</label>
+        <textarea 
+          [(ngModel)]="rejectionReason" 
+          placeholder="e.g., Incomplete documents, Invalid information..."
+          rows="4"></textarea>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-cancel" (click)="showRejectModal = false">Cancel</button>
+        <button 
+          class="btn-confirm-danger" 
+          (click)="rejectRider()"
+          [disabled]="!rejectionReason.trim()">
+          Reject
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

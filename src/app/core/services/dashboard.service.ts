@@ -21,8 +21,6 @@ export class DashboardService {
   public metrics$ = this.metricsSubject.asObservable();
 
   constructor() {
-    // Simulate real-time updates
-    this.simulateRealTimeUpdates();
   }
 
   getPlatformMetrics(): Observable<PlatformMetrics> {

@@ -1,71 +1,39 @@
-import { Routes } from '@angular/router';
+﻿import { Routes } from '@angular/router';
 import { MainLayoutComponent } from './layouts/main-layout/main-layout.component';
-import { DashboardComponent } from './features/dashboard/dashboard.component';
-import { authGuard } from './core/guards/auth.guard';
 
 export const routes: Routes = [
   {
     path: '',
     component: MainLayoutComponent,
-    canActivate: [authGuard],
     children: [
-      {
-        path: '',
-        redirectTo: 'dashboard',
-        pathMatch: 'full'
-      },
-      {
-        path: 'dashboard',
-        component: DashboardComponent
-      },
-      {
-        path: 'orders',
-        loadComponent: () => import('./features/orders/orders.component').then(m => m.OrdersComponent)
-      },
-      {
-        path: 'restaurants',
-        loadChildren: () => import('./features/restaurants/restaurants.routes').then(m => m.RESTAURANT_ROUTES)
-      },
-      {
-        path: 'customers',
-        loadChildren: () => import('./features/customers/customers.routes').then(m => m.CUSTOMER_ROUTES)
-      },
-      {
-        path: 'riders',
-        loadChildren: () => import('./features/riders/riders.routes').then(m => m.RIDER_ROUTES)
-      },
-      {
-        path: 'financial',
-        loadChildren: () => import('./features/financial/financial.routes').then(m => m.FINANCIAL_ROUTES)
-      },
-      {
-        path: 'content',
-        loadChildren: () => import('./features/content/content.routes').then(m => m.CONTENT_ROUTES)
-      },
-      {
-        path: 'support',
-        loadComponent: () => import('./features/support/support.component').then(m => m.SupportComponent)
-      },
-      {
-        path: 'reports',
-        loadComponent: () => import('./features/reports/reports.component').then(m => m.ReportsComponent)
-      },
-      {
-        path: 'admin-users',
-        loadComponent: () => import('./features/admin-users/admin-users.component').then(m => m.AdminUsersComponent)
-      }
+      { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
+      { path: 'dashboard', loadComponent: () => import('./features/dashboard/dashboard.component').then(m => m.DashboardComponent) },
+
+      // Orders
+      { path: 'orders', loadComponent: () => import('./features/orders/orders.component').then(m => m.OrdersComponent) },
+      { path: 'orders/live', loadComponent: () => import('./features/orders/orders-live.component').then(m => m.OrdersLiveComponent) },
+      { path: 'orders/cod', loadComponent: () => import('./features/orders/orders-cod.component').then(m => m.OrdersCodComponent) },
+      { path: 'orders/:id', loadComponent: () => import('./features/orders/order-detail.component').then(m => m.OrderDetailComponent) },
+
+      // Riders
+      { path: 'riders', loadComponent: () => import('./features/riders/riders.component').then(m => m.RidersComponent) },
+      { path: 'riders/status', loadComponent: () => import('./features/riders/rider-status.component').then(m => m.RiderStatusComponent) },
+      { path: 'riders/earnings', loadComponent: () => import('./features/riders/rider-earnings.component').then(m => m.RiderEarningsComponent) },
+
+      // Restaurants
+      { path: 'restaurant-earnings', loadComponent: () => import('./features/restaurants/restaurant-earnings.component').then(m => m.RestaurantEarningsComponent) },
+      { path: 'restaurants/create', loadComponent: () => import('./features/restaurants/restaurant-create.component').then(m => m.RestaurantCreateComponent) },
+      { path: 'restaurants/manage', loadComponent: () => import('./features/restaurants/restaurant-manage.component').then(m => m.RestaurantManageComponent) },
+      { path: 'menu', loadComponent: () => import('./features/restaurants/all-menu.component').then(m => m.AllMenuComponent) },
+
+      // Platform
+      { path: 'coupons', loadComponent: () => import('./features/platform/coupons.component').then(m => m.CouponsComponent) },
+      { path: 'notifications', loadComponent: () => import('./features/platform/notifications.component').then(m => m.NotificationsComponent) },
+      { path: 'hero-banner', loadComponent: () => import('./features/platform/hero-banner.component').then(m => m.HeroBannerComponent) },
+      { path: 'food-categories', loadComponent: () => import('./features/platform/food-categories.component').then(m => m.FoodCategoriesComponent) },
+      { path: 'config', loadComponent: () => import('./features/platform/config.component').then(m => m.ConfigComponent) },
+      { path: 'revenue', loadComponent: () => import('./features/platform/revenue-reports.component').then(m => m.RevenueReportsComponent) },
     ]
   },
-  {
-    path: 'login',
-    loadComponent: () => import('./features/auth/login.component').then(m => m.LoginComponent)
-  },
-  {
-    path: 'unauthorized',
-    loadComponent: () => import('./features/auth/unauthorized.component').then(m => m.UnauthorizedComponent)
-  },
-  {
-    path: '**',
-    redirectTo: 'dashboard'
-  }
+  { path: '**', redirectTo: 'dashboard' }
 ];

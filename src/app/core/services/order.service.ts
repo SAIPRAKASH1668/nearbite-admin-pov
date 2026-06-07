@@ -41,10 +41,15 @@ export class OrderService {
 
   getActiveOrders(): Observable<Order[]> {
     const activeStatuses = [
-      OrderStatus.PLACED,
+      OrderStatus.INITIATED,
+      OrderStatus.PENDING,
       OrderStatus.CONFIRMED,
+      OrderStatus.ACCEPTED,
       OrderStatus.PREPARING,
       OrderStatus.READY_FOR_PICKUP,
+      OrderStatus.AWAITING_RIDER_ASSIGNMENT,
+      OrderStatus.OFFERED_TO_RIDER,
+      OrderStatus.RIDER_ASSIGNED,
       OrderStatus.PICKED_UP,
       OrderStatus.OUT_FOR_DELIVERY
     ];
@@ -89,8 +94,8 @@ export class OrderService {
         packagingCharges: 1,
         discount: i % 5 === 0 ? 5 : 0,
         totalAmount: 31.5 + (i % 30),
-        paymentMethod: [PaymentMethod.CARD, PaymentMethod.UPI, PaymentMethod.CASH_ON_DELIVERY][i % 3],
-        paymentStatus: i % 10 === 0 ? PaymentStatus.FAILED : PaymentStatus.COMPLETED,
+        paymentMethod: [PaymentMethod.CARD, PaymentMethod.UPI, PaymentMethod.WALLET][i % 3],
+        paymentStatus: i % 10 === 0 ? PaymentStatus.FAILED : PaymentStatus.SUCCESS,
         customerDetails: {
           customerId: `cust-${String((i % 20) + 1).padStart(3, '0')}`,
           name: `Customer ${(i % 20) + 1}`,

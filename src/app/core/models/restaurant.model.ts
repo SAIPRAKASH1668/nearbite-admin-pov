@@ -86,6 +86,17 @@ export interface Restaurant {
   status: RestaurantStatus;
   kycStatus: KYCStatus;
   
+  // AWS core fields for API compatibility
+  restaurantId?: string; // Same as id, for AWS API compatibility
+  locationId?: string; // AWS location-based indexing
+  ownerId?: string; // AWS owner reference (phone)
+  
+  // Geohash fields for location-based queries (from AWS)
+  geohash4Char?: string;
+  geohash5Char?: string;
+  geohash6Char?: string;
+  geohash7Char?: string;
+  
   // Business details
   businessRegistrationNumber: string;
   taxId: string;

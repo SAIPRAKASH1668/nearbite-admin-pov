@@ -2,6 +2,8 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { AuthService } from '../../../core/services';
+import { LayoutService } from '../../../core/services/layout.service';
+import { ThemeService } from '../../../core/services/theme.service';
 import { AdminUser } from '../../../core/models';
 
 @Component({
@@ -41,6 +43,13 @@ import { AdminUser } from '../../../core/models';
             <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
           </svg>
           <span class="badge" *ngIf="notificationCount > 0">{{ notificationCount }}</span>
+        </button>
+
+        <button class="theme-toggle" type="button" (click)="theme.toggle()" [title]="theme.mode() === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'">
+          <span class="theme-track">
+            <span class="theme-thumb"></span>
+          </span>
+          <span class="theme-label">{{ theme.mode() === 'dark' ? 'Dark' : 'Light' }}</span>
         </button>
         
         <div class="user-menu" (click)="toggleUserMenu()">
@@ -86,13 +95,15 @@ import { AdminUser } from '../../../core/models';
   `,
   styles: [`
     .topbar {
-      height: var(--header-height);
+      height: calc(var(--header-height) + var(--safe-top, 0px));
+      padding-top: var(--safe-top, 0px);
       background: var(--color-bg-secondary);
       border-bottom: 1px solid var(--color-border);
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 0 var(--space-lg);
+      padding-left: var(--space-lg);
+      padding-right: var(--space-lg);
       position: sticky;
       top: 0;
       z-index: 100;
@@ -158,6 +169,7 @@ import { AdminUser } from '../../../core/models';
       border-left: 1px solid var(--color-border);
       padding-left: var(--space-sm);
       margin-left: var(--space-xs);
+      @media (max-width: 768px) { display: none; }
     }
     
     .search-bar {
@@ -169,6 +181,10 @@ import { AdminUser } from '../../../core/models';
       border-radius: 4px;
       padding: 6px 12px;
       width: 400px;
+
+      @media (max-width: 768px) {
+        display: none;
+      }
       
       svg {
         color: var(--color-text-secondary);
@@ -210,13 +226,65 @@ import { AdminUser } from '../../../core/models';
         top: 4px;
         right: 4px;
         background: var(--color-error);
-        color: white;
+        color: var(--color-text-inverse);
         font-size: 10px;
         font-weight: 600;
         padding: 2px 5px;
         border-radius: 10px;
         min-width: 18px;
         text-align: center;
+      }
+    }
+
+    .theme-toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid var(--color-border);
+      border-radius: 999px;
+      padding: 4px 9px 4px 5px;
+      background: var(--color-bg-tertiary);
+      color: var(--color-text-primary);
+      cursor: pointer;
+      font: inherit;
+      font-size: 12px;
+      font-weight: 700;
+
+      &:hover {
+        border-color: var(--color-border-strong);
+        background: var(--color-bg-hover);
+      }
+    }
+
+    .theme-track {
+      display: flex;
+      align-items: center;
+      width: 34px;
+      height: 20px;
+      border-radius: 999px;
+      padding: 2px;
+      background: var(--color-bg-elevated);
+      border: 1px solid var(--color-border);
+    }
+
+    .theme-thumb {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--color-success);
+      box-shadow: var(--shadow-sm);
+      transform: translateX(14px);
+      transition: transform var(--transition-normal), background var(--transition-normal);
+    }
+
+    :host-context(body.theme-light) .theme-thumb {
+      transform: translateX(0);
+      background: var(--color-primary);
+    }
+
+    .theme-label {
+      @media (max-width: 900px) {
+        display: none;
       }
     }
     
@@ -239,7 +307,7 @@ import { AdminUser } from '../../../core/models';
       height: 32px;
       border-radius: 50%;
       background: var(--color-primary);
-      color: white;
+      color: var(--color-text-inverse);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -251,6 +319,7 @@ import { AdminUser } from '../../../core/models';
       display: flex;
       flex-direction: column;
       align-items: flex-start;
+      @media (max-width: 768px) { display: none; }
     }
     
     .user-name {
@@ -317,7 +386,11 @@ export class TopbarComponent implements OnInit {
     activeOrders: 342
   };
 
-  constructor(private authService: AuthService) {}
+  constructor(
+    private authService: AuthService,
+    private layoutSvc: LayoutService,
+    public theme: ThemeService,
+  ) {}
 
   ngOnInit() {
     this.authService.currentUser$.subscribe(user => {
@@ -326,8 +399,7 @@ export class TopbarComponent implements OnInit {
   }
 
   toggleSidebar() {
-    // Emit event to parent
-    document.body.classList.toggle('sidebar-collapsed');
+    this.layoutSvc.toggleSidebar();
   }
 
   toggleUserMenu() {

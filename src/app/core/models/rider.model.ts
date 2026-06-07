@@ -1,15 +1,12 @@
 /**
  * Rider (Delivery Partner) Model
- * Complete rider entity for admin management
+ * Matches AWS User model with role=RIDER
  */
 
 export enum RiderStatus {
-  PENDING_APPROVAL = 'PENDING_APPROVAL',
-  ACTIVE = 'ACTIVE',
-  OFFLINE = 'OFFLINE',
-  ON_DELIVERY = 'ON_DELIVERY',
-  SUSPENDED = 'SUSPENDED',
-  BLOCKED = 'BLOCKED'
+  SIGNUP_DONE = 'SIGNUP_DONE',
+  APPROVED = 'APPROVED',
+  REJECTED = 'REJECTED'
 }
 
 export enum VehicleType {
@@ -51,6 +48,49 @@ export interface RiderBankDetails {
   verified: boolean;
 }
 
+/**
+ * Rider User Model - matches AWS DynamoDB Users table with role=RIDER
+ */
+export interface RiderUser {
+  // Primary keys
+  phone: string;
+  role: 'RIDER';
+  
+  // Rider identification
+  riderId?: string;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  
+  // Personal details
+  address?: string;
+  dateOfBirth?: string;
+  
+  // KYC Documents
+  aadharNumber?: string;
+  aadharImageUrl?: string;
+  aadharImageBase64?: string; // Deprecated but may exist
+  panNumber?: string;
+  panImageUrl?: string;
+  panImageBase64?: string; // Deprecated but may exist
+  
+  // Status and approval
+  riderStatus: RiderStatus;
+  rejectionReason?: string;
+  approvedAt?: string;
+  
+  // Account info
+  isActive: boolean;
+  createdAt: string;
+  
+  // FCM
+  fcmToken?: string;
+  fcmTokenUpdatedAt?: string;
+}
+
+/**
+ * Legacy Rider interface for backward compatibility
+ */
 export interface Rider {
   id: string;
   firstName: string;
@@ -75,7 +115,7 @@ export interface Rider {
   
   // Professional details
   vehicleDetails: VehicleDetails;
-  operatingZones: string[]; // city names or zone IDs
+  operatingZones: string[];
   
   // Performance metrics
   rating: number;
@@ -83,8 +123,8 @@ export interface Rider {
   totalDeliveries: number;
   completedDeliveries: number;
   cancelledDeliveries: number;
-  successRate: number; // percentage
-  avgDeliveryTime: number; // minutes
+  successRate: number;
+  avgDeliveryTime: number;
   
   // Financial
   bankDetails?: RiderBankDetails;

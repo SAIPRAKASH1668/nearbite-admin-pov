@@ -1,202 +1,547 @@
-
-    <div class="dashboard">
-      <div class="page-header">
-        <div>
-          <h1>Platform Overview</h1>
-          <p class="text-secondary">Real-time monitoring and key performance indicators</p>
-        </div>
-        <div class="header-actions">
-          <button class="btn btn-secondary btn-sm">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polyline points="23 4 23 10 17 10"></polyline>
-              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
-            </svg>
-            Refresh
-          </button>
-          <button class="btn btn-primary btn-sm">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-              <polyline points="7 10 12 15 17 10"></polyline>
-              <line x1="12" y1="15" x2="12" y2="3"></line>
-            </svg>
-            Export Report
-          </button>
-        </div>
-      </div>
-      
-      <!-- Real-time Metrics -->
-      <div class="metrics-grid">
-        <div class="metric-card">
-          <div class="metric-header">
-            <span class="metric-label">Active Orders</span>
-            <div class="status-dot online"></div>
-          </div>
-          <div class="metric-value">{{ metrics.activeOrders }}</div>
-          <div class="metric-footer">
-            <span class="text-success">↑ 12%</span> vs last hour
-          </div>
-        </div>
-        
-        <div class="metric-card">
-          <div class="metric-header">
-            <span class="metric-label">Online Riders</span>
-            <div class="status-dot online"></div>
-          </div>
-          <div class="metric-value">{{ metrics.activeRiders }}</div>
-          <div class="metric-footer">
-            <span class="text-warning">{{ metrics.activeRiders - 20 }}</span> on delivery
-          </div>
-        </div>
-        
-        <div class="metric-card">
-          <div class="metric-header">
-            <span class="metric-label">Orders Today</span>
-          </div>
-          <div class="metric-value">{{ metrics.ordersToday | number }}</div>
-          <div class="metric-footer">
-            <span class="text-success">↑ 18.3%</span> vs yesterday
-          </div>
-        </div>
-        
-        <div class="metric-card">
-          <div class="metric-header">
-            <span class="metric-label">Revenue Today</span>
-          </div>
-          <div class="metric-value">\${{ (metrics.revenueToday / 1000).toFixed(1) }}k</div>
-          <div class="metric-footer">
-            <span class="text-success">↑ 24.1%</span> vs yesterday
-          </div>
-        </div>
-        
-        <div class="metric-card">
-          <div class="metric-header">
-            <span class="metric-label">Completion Rate</span>
-          </div>
-          <div class="metric-value">{{ metrics.orderCompletionRate.toFixed(1) }}%</div>
-          <div class="metric-footer">
-            Target: <span class="text-primary">95%</span>
-          </div>
-        </div>
-        
-        <div class="metric-card">
-          <div class="metric-header">
-            <span class="metric-label">Avg Delivery Time</span>
-          </div>
-          <div class="metric-value">{{ metrics.avgDeliveryTime }} min</div>
-          <div class="metric-footer">
-            <span class="text-success">↓ 2min</span> improvement
-          </div>
-        </div>
-        
-        <div class="metric-card">
-          <div class="metric-header">
-            <span class="metric-label">System Uptime</span>
-          </div>
-          <div class="metric-value">{{ metrics.systemUptime }}%</div>
-          <div class="metric-footer">
-            <span class="text-success">Excellent</span>
-          </div>
-        </div>
-        
-        <div class="metric-card">
-          <div class="metric-header">
-            <span class="metric-label">API Latency</span>
-          </div>
-          <div class="metric-value">{{ metrics.apiLatency }}ms</div>
-          <div class="metric-footer">
-            <span class="text-success">Good</span> performance
-          </div>
-        </div>
-      </div>
-      
-      <!-- Charts Section -->
-      <div class="charts-grid">
-        <div class="card">
-          <h3>Revenue Trend (7 Days)</h3>
-          <canvas #revenueChart></canvas>
-        </div>
-        
-        <div class="card">
-          <h3>Order Status Distribution</h3>
-          <canvas #orderChart></canvas>
-        </div>
-      </div>
-      
-      <!-- Quick Actions -->
-      <div class="section">
-        <h3>Quick Actions</h3>
-        <div class="quick-actions">
-          <button class="action-card">
-            <div class="action-icon primary">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"></path>
-                <path d="M7 2v20"></path>
-              </svg>
-            </div>
-            <div class="action-content">
-              <div class="action-title">Approve Restaurant</div>
-              <div class="action-subtitle">8 pending</div>
-            </div>
-          </button>
-          
-          <button class="action-card">
-            <div class="action-icon warning">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="12" y1="1" x2="12" y2="23"></line>
-                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
-              </svg>
-            </div>
-            <div class="action-content">
-              <div class="action-title">Process Settlements</div>
-              <div class="action-subtitle">12 pending</div>
-            </div>
-          </button>
-          
-          <button class="action-card">
-            <div class="action-icon error">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-              </svg>
-            </div>
-            <div class="action-content">
-              <div class="action-title">Support Tickets</div>
-              <div class="action-subtitle">47 open</div>
-            </div>
-          </button>
-          
-          <button class="action-card">
-            <div class="action-icon success">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <rect x="1" y="3" width="15" height="13"></rect>
-                <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon>
-              </svg>
-            </div>
-            <div class="action-content">
-              <div class="action-title">Verify Riders</div>
-              <div class="action-subtitle">5 pending</div>
-            </div>
-          </button>
-        </div>
-      </div>
-      
-      <!-- Recent Activity -->
-      <div class="section">
-        <h3>Recent Activity</h3>
-        <div class="activity-list card">
-          <div class="activity-item" *ngFor="let activity of recentActivity">
-            <div class="activity-icon" [class]="'icon-' + activity.type">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="12" cy="12" r="10"></circle>
-                <polyline points="12 6 12 12 16 14"></polyline>
-              </svg>
-            </div>
-            <div class="activity-content">
-              <div class="activity-title">{{ activity.title }}</div>
-              <div class="activity-meta">{{ activity.user }} • {{ activity.time }}</div>
-            </div>
-            <span class="status-chip" [class]="'status-' + activity.status">{{ activity.statusText }}</span>
-          </div>
-        </div>
-      </div>
+<div class="dashboard fade-in">
+  <section class="dash-header">
+    <div>
+      <p class="eyebrow">Business command center</p>
+      <h1>Dashboard</h1>
+      <p class="subtitle">{{ rangeLabel }} · Trends, analytics, and money flow</p>
     </div>
-  
+
+    <div class="range-tools">
+      <div class="range-tabs">
+        <button type="button" (click)="setRange('daily')" [class.active]="rangeMode === 'daily'">Daily</button>
+        <button type="button" (click)="setRange('weekly')" [class.active]="rangeMode === 'weekly'">Weekly</button>
+        <button type="button" (click)="setRange('monthly')" [class.active]="rangeMode === 'monthly'">Monthly</button>
+      </div>
+      <div class="date-pickers">
+        <input type="date" [(ngModel)]="rangeStart" (change)="setCustomRange()" />
+        <span>to</span>
+        <input type="date" [(ngModel)]="rangeEnd" (change)="setCustomRange()" />
+      </div>
+      <button class="refresh-btn" type="button" (click)="refresh()">Refresh</button>
+    </div>
+  </section>
+
+  <div class="loading-strip" *ngIf="loading">Loading analytics...</div>
+
+  <nav class="dashboard-tabs" aria-label="Dashboard sections">
+    <button
+      type="button"
+      *ngFor="let tab of tabs"
+      (click)="setTab(tab.key)"
+      [class.active]="activeTab === tab.key">
+      {{ tab.label }}
+    </button>
+  </nav>
+
+  <ng-container [ngSwitch]="activeTab">
+    <ng-container *ngSwitchCase="'overview'">
+      <section class="kpi-grid">
+        <article class="kpi-card" *ngFor="let card of kpis" [ngClass]="card.tone">
+          <div class="kpi-icon">{{ initials(card.label) }}</div>
+          <div class="kpi-copy">
+            <p>{{ card.label }}</p>
+            <h2>{{ card.prefix || '' }}{{ card.value | number:'1.0-0' }}{{ card.suffix || '' }}</h2>
+            <span>{{ card.sub }}</span>
+          </div>
+          <div class="trend" [class.up]="card.trend.direction === 'up'" [class.down]="card.trend.direction === 'down'">
+            {{ card.trend.direction === 'up' ? '↑' : card.trend.direction === 'down' ? '↓' : '–' }}
+            {{ card.trend.label }}
+          </div>
+        </article>
+      </section>
+
+      <section class="main-grid">
+        <article class="panel revenue-panel">
+          <div class="panel-head">
+            <div>
+              <h3>Delivered GMV Trend</h3>
+              <p>Only delivered orders count as business GMV</p>
+            </div>
+            <span class="pill">Rs {{ compact(revenueMax) }} peak</span>
+          </div>
+
+          <div class="chart-wrap" *ngIf="orderTrend.length; else noRevenue">
+            <svg viewBox="0 0 100 100" preserveAspectRatio="none" class="area-chart">
+              <polygon [attr.points]="revenueArea"></polygon>
+              <polyline [attr.points]="revenuePoints"></polyline>
+            </svg>
+            <div class="chart-labels">
+              <span *ngFor="let day of orderTrend; let i = index">{{ showAxisLabel(i, orderTrend.length) ? (day.date | slice:5:10) : '' }}</span>
+            </div>
+          </div>
+          <ng-template #noRevenue>
+            <div class="empty-chart">No delivered GMV in this range</div>
+          </ng-template>
+        </article>
+
+        <article class="panel">
+          <div class="panel-head compact">
+            <h3>Business Insights</h3>
+            <span class="pill">Watchlist</span>
+          </div>
+          <div class="insight-list">
+            <div class="insight" *ngFor="let insight of insights" [ngClass]="insight.tone">
+              <span>{{ insight.title }}</span>
+              <strong>{{ insight.value }}</strong>
+            </div>
+          </div>
+        </article>
+      </section>
+    </ng-container>
+
+    <ng-container *ngSwitchCase="'orders'">
+      <section class="main-grid">
+        <article class="panel">
+          <div class="panel-head compact">
+            <h3>Number Of Orders</h3>
+            <span class="legend"><i></i> created <i></i> delivered</span>
+          </div>
+          <div class="bar-chart" *ngIf="orderTrend.length">
+            <div class="bar-day" *ngFor="let day of orderTrend; let i = index">
+              <div class="bars">
+                <span class="bar created" [style.height.%]="(day.orders / maxOrderCount()) * 100"></span>
+                <span class="bar delivered" [style.height.%]="(day.delivered / maxOrderCount()) * 100"></span>
+              </div>
+              <small>{{ showAxisLabel(i, orderTrend.length) ? (day.date | slice:5:10) : '' }}</small>
+            </div>
+          </div>
+        </article>
+
+        <article class="panel order-summary">
+          <div class="panel-head compact">
+            <h3>Order Summary</h3>
+            <span class="pill">{{ rangeLabel }}</span>
+          </div>
+          <div class="summary-list">
+            <div class="summary-row" *ngFor="let row of orderSummary" [ngClass]="row.tone">
+              <span>{{ row.label }}</span>
+              <strong>{{ row.value | number:'1.0-0' }}</strong>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <section class="panel daypart-panel">
+        <div class="panel-head">
+          <div>
+            <h3>Orders By Time Of Day</h3>
+            <p>Morning, afternoon, evening, and dinner demand patterns</p>
+          </div>
+          <span class="pill">{{ rangeLabel }}</span>
+        </div>
+
+        <div class="daypart-grid">
+          <article class="daypart-card" *ngFor="let part of daypartRows">
+            <div class="daypart-top">
+              <div>
+                <p>{{ part.label }}</p>
+                <span>{{ part.window }}</span>
+              </div>
+              <b>{{ part.orders | number:'1.0-0' }}</b>
+            </div>
+            <div class="daypart-track"><i [style.width.%]="part.barPct"></i></div>
+            <div class="daypart-metrics">
+              <span>Delivered <strong>{{ part.delivered || 0 }}</strong></span>
+              <span>GMV <strong>Rs {{ compact(part.deliveredGmv || 0) }}</strong></span>
+              <span>AOV <strong>Rs {{ compact(part.aov || 0) }}</strong></span>
+              <span>Peak <strong>{{ part.peakHourLabel }}</strong></span>
+            </div>
+            <div class="trend" [class.up]="part.trend.direction === 'up'" [class.down]="part.trend.direction === 'down'">
+              {{ part.trend.direction === 'up' ? '↑' : part.trend.direction === 'down' ? '↓' : '–' }}
+              {{ part.trend.label }}
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="business-grid">
+        <article class="panel">
+          <div class="panel-head compact">
+            <h3>Order Pipeline</h3>
+            <a routerLink="/orders">Orders</a>
+          </div>
+          <div class="pipeline-list">
+            <div class="pipeline-row" *ngFor="let status of statusBreakdown">
+              <div>
+                <strong>{{ status.status }}</strong>
+                <span>{{ status.count }} orders</span>
+              </div>
+              <div class="pipeline-track">
+                <i [style.width.%]="(status.count / (analytics?.summary?.orders?.total || 1)) * 100"></i>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <article class="panel live-panel wide-panel">
+          <div class="panel-head compact">
+            <h3>Live Order Monitoring</h3>
+            <a routerLink="/orders/live">View all</a>
+          </div>
+
+          <div class="live-table" *ngIf="liveOrders.length; else noLive">
+            <div class="live-row header">
+              <span>Order</span>
+              <span>Restaurant</span>
+              <span>Status</span>
+              <span>Bill</span>
+              <span>Time</span>
+            </div>
+            <a class="live-row" *ngFor="let order of liveOrders" [routerLink]="['/orders', order.orderId]">
+              <span class="mono">{{ order.orderId | slice:4:18 }}</span>
+              <span>{{ order.restaurantName || 'Restaurant' }}</span>
+              <span class="status-chip">{{ order.status }}</span>
+              <span>Rs {{ order.grandTotal | number:'1.0-0' }}</span>
+              <span>{{ order.createdAt | slice:11:16 }}</span>
+            </a>
+          </div>
+
+          <ng-template #noLive>
+            <div class="empty-list">No active orders right now</div>
+          </ng-template>
+        </article>
+      </section>
+    </ng-container>
+
+    <ng-container *ngSwitchCase="'profit'">
+      <section class="business-grid">
+        <article class="panel">
+          <div class="panel-head compact">
+            <h3>Profit Breakdown</h3>
+            <span class="pill">Delivered only</span>
+          </div>
+          <div class="money-list">
+            <div class="money-row" *ngFor="let row of profitRows" [ngClass]="row.tone">
+              <span>{{ row.label }}</span>
+              <strong>{{ row.value }}</strong>
+            </div>
+          </div>
+        </article>
+
+        <article class="panel">
+          <div class="panel-head compact">
+            <h3>Payment Split</h3>
+            <span class="pill">{{ analytics?.summary?.payments?.successRatePct || 0 }}% success</span>
+          </div>
+          <div class="rank-list">
+            <div class="progress-row" *ngFor="let payment of paymentRows">
+              <div>
+                <strong>{{ payment.method }}</strong>
+                <span>{{ payment.count }} attempts · Rs {{ compact(payment.value || 0) }}</span>
+              </div>
+              <div class="pipeline-track">
+                <i [style.width.%]="(payment.count / (analytics?.summary?.payments?.totalAttempts || 1)) * 100"></i>
+              </div>
+            </div>
+            <div class="empty-list" *ngIf="!paymentRows.length && !loading">No payment analytics yet</div>
+          </div>
+        </article>
+
+        <article class="panel">
+          <div class="panel-head compact">
+            <h3>Coupon Cost</h3>
+            <a routerLink="/coupons">Offers</a>
+          </div>
+          <div class="rank-list">
+            <div class="progress-row" *ngFor="let coupon of couponRows">
+              <div>
+                <strong>{{ coupon.code }}</strong>
+                <span>{{ coupon.uses }} uses · Rs {{ compact(coupon.discountValue || 0) }} discount</span>
+              </div>
+              <div class="pipeline-track">
+                <i [style.width.%]="(coupon.uses / maxCouponUses()) * 100"></i>
+              </div>
+            </div>
+            <div class="empty-list" *ngIf="!couponRows.length && !loading">No coupon analytics yet</div>
+          </div>
+        </article>
+      </section>
+    </ng-container>
+
+    <ng-container *ngSwitchCase="'restaurants'">
+      <section class="detail-grid">
+        <article class="panel">
+          <div class="panel-head compact">
+            <h3>Top Restaurants</h3>
+            <a routerLink="/restaurants/manage">Manage</a>
+          </div>
+          <div class="rank-list">
+            <div class="rank-row" *ngFor="let restaurant of topRestaurants; let i = index">
+              <div class="avatar">{{ i + 1 }}</div>
+              <div>
+                <strong>{{ restaurant.name }}</strong>
+                <span>{{ restaurant.delivered || 0 }} delivered · {{ restaurant.conversionPct || 0 }}% conversion</span>
+              </div>
+              <b>Rs {{ compact(restaurant.deliveredGmv || restaurant.gmv || 0) }}</b>
+            </div>
+            <div class="empty-list" *ngIf="!topRestaurants.length && !loading">No restaurant analytics yet</div>
+          </div>
+        </article>
+
+        <article class="panel">
+          <div class="panel-head compact">
+            <h3>Top Selling Items</h3>
+            <a routerLink="/menu">Menu</a>
+          </div>
+          <div class="rank-list">
+            <div class="rank-row" *ngFor="let item of topItems; let i = index">
+              <div class="food-avatar">{{ initials(item.name) }}</div>
+              <div>
+                <strong>{{ item.name }}</strong>
+                <span>Rs {{ compact(item.revenue || 0) }} revenue</span>
+              </div>
+              <b>{{ item.quantity | number:'1.0-0' }}</b>
+            </div>
+            <div class="empty-list" *ngIf="!topItems.length && !loading">No item analytics yet</div>
+          </div>
+        </article>
+
+        <article class="panel">
+          <div class="panel-head compact">
+            <h3>Restaurant Health</h3>
+            <span class="pill">{{ restaurantsOnline }} online</span>
+          </div>
+          <div class="summary-list">
+            <div class="summary-row green">
+              <span>Online restaurants</span>
+              <strong>{{ restaurantsOnline }}</strong>
+            </div>
+            <div class="summary-row blue">
+              <span>Total restaurants</span>
+              <strong>{{ restaurants.length }}</strong>
+            </div>
+            <div class="summary-row amber">
+              <span>Top performers tracked</span>
+              <strong>{{ topRestaurants.length }}</strong>
+            </div>
+          </div>
+        </article>
+      </section>
+    </ng-container>
+
+    <ng-container *ngSwitchCase="'riders'">
+      <section class="business-grid">
+        <article class="panel">
+          <div class="panel-head compact">
+            <h3>Rider Summary</h3>
+            <a routerLink="/riders">Riders</a>
+          </div>
+          <div class="summary-list">
+            <div class="summary-row green">
+              <span>Active riders</span>
+              <strong>{{ activeRiders }}</strong>
+            </div>
+            <div class="summary-row amber">
+              <span>Busy riders</span>
+              <strong>{{ busyRiders }}</strong>
+            </div>
+            <div class="summary-row blue">
+              <span>Active orders</span>
+              <strong>{{ activeOrders }}</strong>
+            </div>
+          </div>
+        </article>
+
+        <article class="panel wide-panel">
+          <div class="panel-head compact">
+            <h3>Rider Performance</h3>
+            <a routerLink="/riders">Manage</a>
+          </div>
+          <div class="rank-list">
+            <div class="progress-row" *ngFor="let rider of topRiders">
+              <div>
+                <strong>{{ rider.riderName || rider.riderId }}</strong>
+                <span>{{ rider.deliveries || 0 }} deliveries · Rs {{ compact(rider.earnings || 0) }} earnings</span>
+              </div>
+              <div class="pipeline-track">
+                <i [style.width.%]="(rider.deliveries / maxRiderDeliveries()) * 100"></i>
+              </div>
+            </div>
+            <div class="empty-list" *ngIf="!topRiders.length && !loading">No rider analytics yet</div>
+          </div>
+        </article>
+      </section>
+    </ng-container>
+
+    <ng-container *ngSwitchCase="'customers'">
+      <section class="business-grid">
+        <article class="panel">
+          <div class="panel-head compact">
+            <h3>Customer Retention</h3>
+            <span class="pill">{{ analytics?.summary?.customers?.repeatRatePct || 0 }}% repeat</span>
+          </div>
+          <div class="summary-list">
+            <div class="summary-row" *ngFor="let cohort of customerCohort" [ngClass]="cohort.bucket === '1 order' ? 'red' : cohort.bucket === '2-3' ? 'amber' : 'green'">
+              <span>{{ cohort.bucket }} delivered</span>
+              <strong>{{ cohort.customers | number:'1.0-0' }}</strong>
+            </div>
+            <div class="empty-list" *ngIf="!customerCohort.length && !loading">No customer cohort data yet</div>
+          </div>
+        </article>
+
+        <article class="panel">
+          <div class="panel-head compact">
+            <h3>Customer Summary</h3>
+            <span class="pill">Delivered only</span>
+          </div>
+          <div class="summary-list">
+            <div class="summary-row blue">
+              <span>Unique customers</span>
+              <strong>{{ analytics?.summary?.customers?.unique || 0 }}</strong>
+            </div>
+            <div class="summary-row green">
+              <span>Repeat customers</span>
+              <strong>{{ analytics?.summary?.customers?.repeatInWindow || 0 }}</strong>
+            </div>
+            <div class="summary-row amber">
+              <span>Avg orders/customer</span>
+              <strong>{{ analytics?.summary?.customers?.avgOrdersPerCustomer || 0 }}</strong>
+            </div>
+          </div>
+        </article>
+
+        <article class="panel">
+          <div class="panel-head compact">
+            <h3>Signup Conversion</h3>
+            <span class="pill">{{ rangeLabel }}</span>
+          </div>
+          <div class="summary-list">
+            <div class="summary-row blue">
+              <span>New signups</span>
+              <strong>{{ analytics?.summary?.signupConversion?.range?.signups || 0 }}</strong>
+            </div>
+            <div class="summary-row green">
+              <span>Ordered in range</span>
+              <strong>{{ analytics?.summary?.signupConversion?.range?.orderedInRange || 0 }}</strong>
+            </div>
+            <div class="summary-row amber">
+              <span>Activation rate</span>
+              <strong>{{ analytics?.summary?.signupConversion?.range?.orderRatePct || 0 }}%</strong>
+            </div>
+            <div class="summary-row red">
+              <span>Not ordered yet</span>
+              <strong>{{ analytics?.summary?.signupConversion?.range?.notOrderedEver || 0 }}</strong>
+            </div>
+          </div>
+        </article>
+
+        <article class="panel">
+          <div class="panel-head compact">
+            <h3>Marketing Audience</h3>
+            <span class="pill">All time</span>
+          </div>
+          <div class="summary-list">
+            <div class="summary-row blue">
+              <span>Total customer signups</span>
+              <strong>{{ analytics?.summary?.signupConversion?.overall?.signups || 0 }}</strong>
+            </div>
+            <div class="summary-row green">
+              <span>Ordered ever</span>
+              <strong>{{ analytics?.summary?.signupConversion?.overall?.orderedEver || 0 }}</strong>
+            </div>
+            <div class="summary-row red">
+              <span>Never ordered</span>
+              <strong>{{ analytics?.summary?.signupConversion?.overall?.neverOrdered || 0 }}</strong>
+            </div>
+            <div class="summary-row amber">
+              <span>Overall conversion</span>
+              <strong>{{ analytics?.summary?.signupConversion?.overall?.orderRatePct || 0 }}%</strong>
+            </div>
+          </div>
+        </article>
+
+        <article class="panel">
+          <div class="panel-head compact">
+            <h3>Payment Preference</h3>
+            <span class="pill">Cash flow</span>
+          </div>
+          <div class="rank-list">
+            <div class="progress-row" *ngFor="let payment of paymentRows">
+              <div>
+                <strong>{{ payment.method }}</strong>
+                <span>{{ payment.count }} attempts</span>
+              </div>
+              <div class="pipeline-track">
+                <i [style.width.%]="(payment.count / (analytics?.summary?.payments?.totalAttempts || 1)) * 100"></i>
+              </div>
+            </div>
+          </div>
+        </article>
+      </section>
+    </ng-container>
+
+    <ng-container *ngSwitchCase="'offers'">
+      <section class="business-grid">
+        <article class="panel">
+          <div class="panel-head compact">
+            <h3>Offer Summary</h3>
+            <a routerLink="/coupons">Coupons</a>
+          </div>
+          <div class="summary-list">
+            <div class="summary-row amber">
+              <span>Coupon orders</span>
+              <strong>{{ analytics?.summary?.coupons?.ordersUsed || 0 }}</strong>
+            </div>
+            <div class="summary-row red">
+              <span>Discount value</span>
+              <strong>Rs {{ compact(analytics?.summary?.coupons?.discountValue || 0) }}</strong>
+            </div>
+            <div class="summary-row blue">
+              <span>Penetration</span>
+              <strong>{{ analytics?.summary?.coupons?.penetrationPct || 0 }}%</strong>
+            </div>
+          </div>
+        </article>
+
+        <article class="panel wide-panel">
+          <div class="panel-head compact">
+            <h3>Coupon Performance</h3>
+            <a routerLink="/coupons">Manage</a>
+          </div>
+          <div class="rank-list">
+            <div class="progress-row" *ngFor="let coupon of couponRows">
+              <div>
+                <strong>{{ coupon.code }}</strong>
+                <span>{{ coupon.uses }} uses · Rs {{ compact(coupon.discountValue || 0) }} discount</span>
+              </div>
+              <div class="pipeline-track">
+                <i [style.width.%]="(coupon.uses / maxCouponUses()) * 100"></i>
+              </div>
+            </div>
+            <div class="empty-list" *ngIf="!couponRows.length && !loading">No coupon analytics yet</div>
+          </div>
+        </article>
+      </section>
+    </ng-container>
+
+    <ng-container *ngSwitchCase="'alerts'">
+      <section class="business-grid">
+        <article class="panel alerts-panel wide-panel">
+          <div class="panel-head compact">
+            <h3>Business Alerts</h3>
+            <span class="pill">Watchlist</span>
+          </div>
+          <div class="alert-list">
+            <div class="alert-row" *ngFor="let alert of alertRows" [ngClass]="alert.tone">
+              <strong>{{ alert.title }}</strong>
+              <span>{{ alert.detail }}</span>
+            </div>
+          </div>
+        </article>
+
+        <article class="panel">
+          <div class="panel-head compact">
+            <h3>Quick Watchlist</h3>
+            <span class="pill">{{ rangeLabel }}</span>
+          </div>
+          <div class="insight-list">
+            <div class="insight" *ngFor="let insight of insights" [ngClass]="insight.tone">
+              <span>{{ insight.title }}</span>
+              <strong>{{ insight.value }}</strong>
+            </div>
+          </div>
+        </article>
+      </section>
+    </ng-container>
+  </ng-container>
+</div>

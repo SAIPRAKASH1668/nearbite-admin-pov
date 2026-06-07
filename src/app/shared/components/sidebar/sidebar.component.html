@@ -1,52 +1,61 @@
-<aside class="sidebar">
-  <div class="sidebar-header">
-    <div class="logo">
-      <div class="logo-text">
-        <div class="logo-title">NearBite</div>
-        <div class="logo-subtitle">Admin Console</div>
-      </div>
-      <div class="logo-icon"></div>
+﻿<aside class="sidebar">
+
+  <!-- Logo + collapse toggle -->
+  <div class="sidebar-logo">
+    <div class="logo-mark">YD</div>
+    <div class="logo-text">
+      <span class="logo-name">YumDude</span>
+      <span class="logo-sub">Admin Console</span>
     </div>
+    <button class="collapse-btn" (click)="toggle()" title="Collapse sidebar">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="15 18 9 12 15 6"></polyline>
+      </svg>
+    </button>
   </div>
-  
+
+  <!-- Env Switch -->
+  <div class="env-switch">
+    <button class="env-btn" [class.active]="apiSvc.currentEnv === 'prod'" (click)="setEnv('prod')">PROD</button>
+    <button class="env-btn" [class.active]="apiSvc.currentEnv === 'dev'"  (click)="setEnv('dev')">DEV</button>
+  </div>
+
+  <!-- Navigation -->
   <nav class="sidebar-nav">
-    <div *ngFor="let item of menuItems" class="menu-item-wrapper">
-      <a 
-        *ngIf="!item.children"
-        [routerLink]="item.route"
-        routerLinkActive="active"
-        class="menu-item"
-      >
-        <span class="menu-icon" [innerHTML]="item.icon"></span>
-        <span class="menu-label">{{ item.label }}</span>
-        <span class="menu-badge" *ngIf="item.badge">{{ item.badge }}</span>
-      </a>
-      
-      <div *ngIf="item.children" class="menu-group">
-        <div 
-          class="menu-item" 
-          [class.expanded]="item.expanded"
-          (click)="toggleGroup(item)"
-        >
-          <span class="menu-icon" [innerHTML]="item.icon"></span>
-          <span class="menu-label">{{ item.label }}</span>
-          <svg class="menu-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polyline points="6 9 12 15 18 9"></polyline>
-          </svg>
-        </div>
-        
-        <div class="submenu" *ngIf="item.expanded">
-          <a 
-            *ngFor="let child of item.children"
-            [routerLink]="child.route"
-            routerLinkActive="active"
-            class="submenu-item"
-          >
-            {{ child.label }}
-            <span class="menu-badge" *ngIf="child.badge">{{ child.badge }}</span>
-          </a>
-        </div>
-      </div>
-    </div>
+
+    <div class="nav-label">Overview</div>
+    <a routerLink="/dashboard"  routerLinkActive="active" class="nav-item" title="Dashboard"><span class="ni">▦</span><span class="nav-text">Dashboard</span></a>
+    <a routerLink="/orders"     routerLinkActive="active" class="nav-item" title="All Orders"><span class="ni">≡</span><span class="nav-text">All Orders</span></a>
+    <a routerLink="/orders/live" routerLinkActive="active" class="nav-item" title="In Progress">
+      <span class="ni">⚡</span><span class="nav-text">In Progress</span><span class="live-dot"></span>
+    </a>
+    <a routerLink="/orders/cod" routerLinkActive="active" class="nav-item" title="COD Orders"><span class="ni">$</span><span class="nav-text">COD Orders</span></a>
+
+    <div class="nav-label">Riders</div>
+    <a routerLink="/riders"         routerLinkActive="active" class="nav-item" title="All Riders"><span class="ni">◎</span><span class="nav-text">All Riders</span></a>
+    <a routerLink="/riders/status"  routerLinkActive="active" class="nav-item" title="Rider Status"><span class="ni">◉</span><span class="nav-text">Rider Status</span></a>
+    <a routerLink="/riders/earnings" routerLinkActive="active" class="nav-item" title="Rider Earnings"><span class="ni">₹</span><span class="nav-text">Rider Earnings</span></a>
+
+    <div class="nav-label">Restaurants</div>
+    <a routerLink="/restaurant-earnings" routerLinkActive="active" class="nav-item" title="Rest. Earnings"><span class="ni">▤</span><span class="nav-text">Rest. Earnings</span></a>
+    <a routerLink="/restaurants/create"  routerLinkActive="active" class="nav-item" title="Create Restaurant"><span class="ni">+</span><span class="nav-text">Create Restaurant</span></a>
+    <a routerLink="/restaurants/manage"  routerLinkActive="active" class="nav-item" title="Restaurant Updates"><span class="ni">✎</span><span class="nav-text">Restaurant Updates</span></a>
+    <a routerLink="/menu"               routerLinkActive="active" class="nav-item" title="All Menus"><span class="ni">▤</span><span class="nav-text">All Menus</span></a>
+
+    <div class="nav-label">Platform</div>
+    <a routerLink="/coupons"        routerLinkActive="active" class="nav-item" title="Coupons"><span class="ni">%</span><span class="nav-text">Coupons</span></a>
+    <a routerLink="/notifications"  routerLinkActive="active" class="nav-item" title="Send Notifications"><span class="ni">✉</span><span class="nav-text">Send Notifications</span></a>
+    <a routerLink="/hero-banner"    routerLinkActive="active" class="nav-item" title="Hero Banner"><span class="ni">▣</span><span class="nav-text">Hero Banner</span></a>
+    <a routerLink="/food-categories" routerLinkActive="active" class="nav-item" title="Food Categories"><span class="ni">≋</span><span class="nav-text">Food Categories</span></a>
+    <a routerLink="/config"         routerLinkActive="active" class="nav-item" title="Config"><span class="ni">⚙</span><span class="nav-text">Config</span></a>
+    <a routerLink="/revenue"        routerLinkActive="active" class="nav-item" title="Revenue Reports"><span class="ni">↑</span><span class="nav-text">Revenue Reports</span></a>
+
   </nav>
+
+  <!-- Footer -->
+  <div class="sidebar-footer">
+    <span class="footer-dot" [class.prod]="apiSvc.currentEnv==='prod'"></span>
+    <span class="footer-url nav-text">{{ apiSvc.currentEnv === 'prod' ? 'api.yumdude.com' : 'api.dev.yumdude.com' }}</span>
+  </div>
+
 </aside>
