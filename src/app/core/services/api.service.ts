@@ -227,17 +227,46 @@ export class ApiService {
     return this.put<any>(`/api/v1/restaurants/${restaurantId}/status`, { isOpen });
   }
 
+  getRestaurantStatus(restaurantId: string) {
+    return this.get<any>(`/api/v1/restaurants/${restaurantId}/status`);
+  }
+
   // ─── Menu ─────────────────────────────────────────────────────────────────
-  getMenu(restaurantId: string) {
-    return this.get<any>(`/api/v1/restaurants/${restaurantId}/menu`);
+  // mode: 'all' includes theater items; omit for the regular customer menu.
+  getMenu(restaurantId: string, mode?: 'all' | 'theater' | 'regular') {
+    return this.get<any>(`/api/v1/restaurants/${restaurantId}/menu`, mode ? { mode } : undefined);
+  }
+
+  createMenuItem(restaurantId: string, data: any) {
+    return this.post<any>(`/api/v1/restaurants/${restaurantId}/menu`, data);
   }
 
   updateMenuItem(restaurantId: string, itemId: string, data: any) {
     return this.put<any>(`/api/v1/restaurants/${restaurantId}/menu/${itemId}`, data);
   }
 
+  deleteMenuItem(restaurantId: string, itemId: string) {
+    return this.delete<any>(`/api/v1/restaurants/${restaurantId}/menu/${itemId}`);
+  }
+
   toggleMenuItemAvailability(restaurantId: string, itemId: string, isAvailable: boolean) {
     return this.put<any>(`/api/v1/restaurants/${restaurantId}/menu/${itemId}`, { isAvailable });
+  }
+
+  // Bulk: raise every item's price by a percentage (0 < x <= 500).
+  bulkMenuPriceHike(restaurantId: string, percentage: number) {
+    return this.post<any>(`/api/v1/restaurants/${restaurantId}/menu/price-hike`, { percentage });
+  }
+
+  // Bulk: set shift timings for every item in a category.
+  bulkCategoryShifts(restaurantId: string, category: string, shiftTimings: any[]) {
+    return this.post<any>(`/api/v1/restaurants/${restaurantId}/menu/category-shifts`, { category, shiftTimings });
+  }
+
+  // ─── Images ───────────────────────────────────────────────────────────────
+  // entity: 'RESTAURANT' (needs restaurantId) | 'ITEM' (needs restaurantId + itemId).
+  uploadImages(body: { listBase64: string[]; entity: 'RESTAURANT' | 'ITEM'; restaurantId: string; itemId?: string }) {
+    return this.post<any>('/api/v1/images/upload', body);
   }
 
   // ─── Coupons ──────────────────────────────────────────────────────────────
