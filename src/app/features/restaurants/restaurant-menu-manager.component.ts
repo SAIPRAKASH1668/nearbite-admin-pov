@@ -1,8 +1,8 @@
 import { Component, Input, OnChanges, SimpleChanges } from '@angular/core';
 import { CommonModule, CurrencyPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { forkJoin, of } from 'rxjs';
-import { catchError, map } from 'rxjs/operators';
+import { from, of } from 'rxjs';
+import { catchError, map, mergeMap, toArray } from 'rxjs/operators';
 import { ApiService } from '../../core/services/api.service';
 import { ImageUploaderComponent } from '../../shared/components/image-uploader/image-uploader.component';
 
@@ -583,13 +583,17 @@ export class RestaurantMenuManagerComponent implements OnChanges {
 
     this.bulkSaving = true;
     this.notice = '';
-    const calls = changes.map(c =>
-      this.api.updateMenuItem(this.restaurantId, c.item.itemId || c.item.id, { hikePercentage: c.next }).pipe(
-        map(() => ({ ok: true, c })),
-        catchError(() => of({ ok: false, c })),
-      )
-    );
-    forkJoin(calls).subscribe({
+    // Throttle to a few requests in flight at a time. A forkJoin of all items at
+    // once bursts the API and most calls get throttled (429/503) → mass failures.
+    const MAX_CONCURRENT = 4;
+    from(changes).pipe(
+      mergeMap(c =>
+        this.api.updateMenuItem(this.restaurantId, c.item.itemId || c.item.id, { hikePercentage: c.next }).pipe(
+          map(() => ({ ok: true, c })),
+          catchError(() => of({ ok: false, c })),
+        ), MAX_CONCURRENT),
+      toArray(),
+    ).subscribe({
       next: (results: any[]) => {
         const okResults = results.filter(r => r.ok);
         okResults.forEach(r => { r.c.item.hikePercentage = r.c.next; });
