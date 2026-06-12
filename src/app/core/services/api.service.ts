@@ -29,6 +29,19 @@ export class ApiService {
     return localStorage.getItem(this.JWT_KEY) || '';
   }
 
+  // ADMIN_API_KEY for ops endpoints (/api/v1/ops/*), sent as X-Api-Key.
+  private get adminKey(): string {
+    return localStorage.getItem('yd_admin_key') || '';
+  }
+
+  get hasAdminKey(): boolean {
+    return !!this.adminKey;
+  }
+
+  setAdminKey(key: string): void {
+    localStorage.setItem('yd_admin_key', (key || '').trim());
+  }
+
   get baseUrl(): string {
     return this.BASE_URLS[this.env];
   }
@@ -66,6 +79,11 @@ export class ApiService {
     }
     if (this.bypassToken) {
       headers = headers.set('X-Retool-Bypass', this.bypassToken);
+    }
+    // Ops/admin routes are gated by the ADMIN_API_KEY via X-Api-Key. Harmless on
+    // JWT routes (backend only reads it for /api/v1/ops/* prefixes).
+    if (this.adminKey) {
+      headers = headers.set('X-Api-Key', this.adminKey);
     }
     return headers;
   }
@@ -213,17 +231,46 @@ export class ApiService {
     return this.put<any>(`/api/v1/restaurants/${restaurantId}/status`, { isOpen });
   }
 
+  getRestaurantStatus(restaurantId: string) {
+    return this.get<any>(`/api/v1/restaurants/${restaurantId}/status`);
+  }
+
   // ─── Menu ─────────────────────────────────────────────────────────────────
-  getMenu(restaurantId: string) {
-    return this.get<any>(`/api/v1/restaurants/${restaurantId}/menu`);
+  // mode: 'all' includes theater items; omit for the regular customer menu.
+  getMenu(restaurantId: string, mode?: 'all' | 'theater' | 'regular') {
+    return this.get<any>(`/api/v1/restaurants/${restaurantId}/menu`, mode ? { mode } : undefined);
+  }
+
+  createMenuItem(restaurantId: string, data: any) {
+    return this.post<any>(`/api/v1/restaurants/${restaurantId}/menu`, data);
   }
 
   updateMenuItem(restaurantId: string, itemId: string, data: any) {
     return this.put<any>(`/api/v1/restaurants/${restaurantId}/menu/${itemId}`, data);
   }
 
+  deleteMenuItem(restaurantId: string, itemId: string) {
+    return this.delete<any>(`/api/v1/restaurants/${restaurantId}/menu/${itemId}`);
+  }
+
   toggleMenuItemAvailability(restaurantId: string, itemId: string, isAvailable: boolean) {
     return this.put<any>(`/api/v1/restaurants/${restaurantId}/menu/${itemId}`, { isAvailable });
+  }
+
+  // Bulk: raise every item's price by a percentage (0 < x <= 500).
+  bulkMenuPriceHike(restaurantId: string, percentage: number) {
+    return this.post<any>(`/api/v1/restaurants/${restaurantId}/menu/price-hike`, { percentage });
+  }
+
+  // Bulk: set shift timings for every item in a category.
+  bulkCategoryShifts(restaurantId: string, category: string, shiftTimings: any[]) {
+    return this.post<any>(`/api/v1/restaurants/${restaurantId}/menu/category-shifts`, { category, shiftTimings });
+  }
+
+  // ─── Images ───────────────────────────────────────────────────────────────
+  // entity: 'RESTAURANT' (needs restaurantId) | 'ITEM' (needs restaurantId + itemId).
+  uploadImages(body: { listBase64: string[]; entity: 'RESTAURANT' | 'ITEM'; restaurantId: string; itemId?: string }) {
+    return this.post<any>('/api/v1/images/upload', body);
   }
 
   // ─── Coupons ──────────────────────────────────────────────────────────────
@@ -286,5 +333,29 @@ export class ApiService {
   // ─── Notifications ────────────────────────────────────────────────────────
   sendNotification(data: any) {
     return this.post<any>('/api/v1/notifications/send', data);
+  }
+
+  // ─── Rider Slots (admin/ops — requires ADMIN_API_KEY via X-Api-Key) ─────────
+  listRiderSlots() {
+    return this.get<any>('/api/v1/ops/rider-slots');
+  }
+
+  createRiderSlot(data: {
+    label?: string; date: string; startTime: string; endTime: string;
+    price: number; totalSeats: number; released?: boolean; releaseAt?: string;
+  }) {
+    return this.post<any>('/api/v1/ops/rider-slots', data);
+  }
+
+  updateRiderSlot(slotId: string, data: any) {
+    return this.put<any>(`/api/v1/ops/rider-slots/${slotId}`, data);
+  }
+
+  deleteRiderSlot(slotId: string) {
+    return this.delete<any>(`/api/v1/ops/rider-slots/${slotId}`);
+  }
+
+  releaseRiderSlot(slotId: string, releaseAt?: string) {
+    return this.post<any>(`/api/v1/ops/rider-slots/${slotId}/release`, releaseAt ? { releaseAt } : {});
   }
 }
