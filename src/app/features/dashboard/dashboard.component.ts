@@ -150,6 +150,10 @@ export class DashboardComponent implements OnInit {
 
   setCustomRange(): void {
     this.rangeMode = "custom";
+  }
+
+  applyCustomRange(): void {
+    this.rangeMode = "custom";
     this.loadAll();
   }
 
@@ -385,20 +389,21 @@ export class DashboardComponent implements OnInit {
     const rows = this.analytics?.charts?.daypartBreakdown || this.fallbackDayparts();
     const previousRows = this.previousAnalytics?.charts?.daypartBreakdown || [];
     const previousByKey = new Map(previousRows.map((row: any) => [row.key, row]));
-    const maxOrders = Math.max(...rows.map((row: any) => this.num(row.orders)), 1);
+    const maxDelivered = Math.max(...rows.map((row: any) => this.num(row.delivered)), 1);
 
     this.daypartRows = rows.map((row: any) => {
       const previous: any = previousByKey.get(row.key) || {};
-      const orders = this.num(row.orders);
+      const delivered = this.num(row.delivered);
       return {
         ...row,
-        barPct: (orders / maxOrders) * 100,
+        barPct: (delivered / maxDelivered) * 100,
+        delivered,
         deliveredGmv: this.num(row.deliveredGmv),
         aov: this.num(row.aov),
         conversionPct: this.num(row.conversionPct),
         sharePct: this.num(row.sharePct),
         peakHourLabel: row.peakHourLabel || "-",
-        trend: this.trend(orders, this.num(previous.orders)),
+        trend: this.trend(delivered, this.num(previous.delivered)),
       };
     });
   }
@@ -454,19 +459,19 @@ export class DashboardComponent implements OnInit {
     const customers = this.analytics?.summary?.customers || {};
     const signupRange = this.analytics?.summary?.signupConversion?.range || {};
     const riderTable = this.analytics?.summary?.riderEarningsTable || {};
-    const bestDaypart = [...this.daypartRows].sort((a, b) => this.num(b.orders) - this.num(a.orders))[0];
-    const worstDaypart = [...this.daypartRows].filter((row) => this.num(row.orders) > 0).sort((a, b) => this.num(a.orders) - this.num(b.orders))[0];
+    const bestDaypart = [...this.daypartRows].sort((a, b) => this.num(b.delivered) - this.num(a.delivered))[0];
+    const worstDaypart = [...this.daypartRows].filter((row) => this.num(row.delivered) > 0).sort((a, b) => this.num(a.delivered) - this.num(b.delivered))[0];
     const cancelRate = this.num(orders.total) ? (this.num(orders.cancelled) / this.num(orders.total)) * 100 : 0;
 
     this.alertRows = [
       {
         title: bestDaypart ? `${bestDaypart.label} is the strongest demand window` : "No demand window yet",
-        detail: bestDaypart ? `${bestDaypart.orders} orders, peak around ${bestDaypart.peakHourLabel}. Staff riders and restaurants around this slot.` : "Orders will appear here once analytics has data.",
+        detail: bestDaypart ? `${bestDaypart.delivered} delivered, peak around ${bestDaypart.peakHourLabel}. Staff riders and restaurants around this slot.` : "Orders will appear here once analytics has data.",
         tone: "green",
       },
       {
         title: worstDaypart ? `${worstDaypart.label} is the weakest window` : "Low-volume window unavailable",
-        detail: worstDaypart ? `${worstDaypart.orders} orders in ${worstDaypart.window}. Good slot for targeted offers or push notifications.` : "Not enough order data to identify weak demand.",
+        detail: worstDaypart ? `${worstDaypart.delivered} delivered in ${worstDaypart.window}. Good slot for targeted offers or push notifications.` : "Not enough order data to identify weak demand.",
         tone: "amber",
       },
       {

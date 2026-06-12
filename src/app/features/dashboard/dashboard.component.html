@@ -17,6 +17,7 @@
         <span>to</span>
         <input type="date" [(ngModel)]="rangeEnd" (change)="setCustomRange()" />
       </div>
+      <button class="refresh-btn" type="button" (click)="applyCustomRange()">Enter</button>
       <button class="refresh-btn" type="button" (click)="refresh()">Refresh</button>
     </div>
   </section>
@@ -125,7 +126,7 @@
         <div class="panel-head">
           <div>
             <h3>Orders By Time Of Day</h3>
-            <p>Morning, afternoon, evening, and dinner demand patterns</p>
+            <p>Delivered demand by morning, afternoon, evening, and dinner</p>
           </div>
           <span class="pill">{{ rangeLabel }}</span>
         </div>
@@ -137,11 +138,10 @@
                 <p>{{ part.label }}</p>
                 <span>{{ part.window }}</span>
               </div>
-              <b>{{ part.orders | number:'1.0-0' }}</b>
+              <b>{{ part.delivered | number:'1.0-0' }}</b>
             </div>
             <div class="daypart-track"><i [style.width.%]="part.barPct"></i></div>
             <div class="daypart-metrics">
-              <span>Delivered <strong>{{ part.delivered || 0 }}</strong></span>
               <span>GMV <strong>Rs {{ compact(part.deliveredGmv || 0) }}</strong></span>
               <span>AOV <strong>Rs {{ compact(part.aov || 0) }}</strong></span>
               <span>Peak <strong>{{ part.peakHourLabel }}</strong></span>

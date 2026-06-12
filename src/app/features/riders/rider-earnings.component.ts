@@ -113,9 +113,14 @@ import { ApiService } from '../../core/services/api.service';
         <div class="stat-sub">{{ unsettledItems.length }} orders</div>
       </div>
       <div class="stat-card cod-stat" *ngIf="summary.totalCashCollected > 0">
-        <div class="stat-label">COD Cash Collected</div>
-        <div class="stat-value" style="color:var(--color-warning)">{{ summary.totalCashCollected | currency:'INR':'symbol':'1.0-0' }}</div>
-        <div class="stat-sub">Return to platform</div>
+        <div class="stat-label">Pending COD Return</div>
+        <div class="stat-value" style="color:var(--color-warning)">{{ pendingCodTotal | currency:'INR':'symbol':'1.0-0' }}</div>
+        <div class="stat-sub">{{ pendingCodItems.length }} orders</div>
+      </div>
+      <div class="stat-card cod-stat" *ngIf="settledCodTotal > 0">
+        <div class="stat-label">Settled COD Return</div>
+        <div class="stat-value" style="color:var(--color-success)">{{ settledCodTotal | currency:'INR':'symbol':'1.0-0' }}</div>
+        <div class="stat-sub">{{ settledCodItems.length }} orders</div>
       </div>
     </div>
 
@@ -191,20 +196,28 @@ import { ApiService } from '../../core/services/api.service';
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let h of settledItems">
-              <td class="font-mono text-xs">
-                <button class="order-link" *ngIf="h.orderId" (click)="navigateToOrder(h.orderId)">{{ h.orderId | slice:0:16 }}&hellip;</button>
-                <span *ngIf="!h.orderId" class="text-tertiary">{{ h.bonusLabel || '&mdash;' }}</span>
-              </td>
-              <td class="text-secondary">{{ h.date | slice:0:10 }}</td>
-              <td><span class="badge badge-neutral text-xs">{{ h.entryType || 'DELIVERY' }}</span></td>
-              <td class="font-mono">&#8377;{{ h.deliveryFees | number:'1.0-0' }}</td>
-              <td class="font-mono" style="color:var(--color-success)">{{ h.tips > 0 ? '&#8377;' + (h.tips | number:'1.0-0') : '&mdash;' }}</td>
-              <td class="font-mono" style="color:var(--color-warning)">{{ h.incentives > 0 ? '&#8377;' + (h.incentives | number:'1.0-0') : '&mdash;' }}</td>
-              <td class="font-mono font-600">&#8377;{{ h.totalEarnings | number:'1.0-0' }}</td>
-              <td class="font-mono text-xs text-tertiary">{{ h.settlementId || '&mdash;' }}</td>
-              <td class="text-secondary text-xs">{{ h.settledAt ? (h.settledAt | slice:0:10) : '&mdash;' }}</td>
-            </tr>
+            <ng-container *ngFor="let group of settledGroups">
+              <tr class="settlement-group-row">
+                <td colspan="9">
+                  <strong class="font-mono">{{ group.settlementId }}</strong>
+                  <span>{{ group.count }} orders &middot; &#8377;{{ group.total | number:'1.0-0' }} &middot; {{ group.settledAt ? (group.settledAt | slice:0:10) : 'No date' }}</span>
+                </td>
+              </tr>
+              <tr *ngFor="let h of group.items">
+                <td class="font-mono text-xs">
+                  <button class="order-link" *ngIf="h.orderId" (click)="navigateToOrder(h.orderId)">{{ h.orderId | slice:0:16 }}&hellip;</button>
+                  <span *ngIf="!h.orderId" class="text-tertiary">{{ h.bonusLabel || '&mdash;' }}</span>
+                </td>
+                <td class="text-secondary">{{ h.date | slice:0:10 }}</td>
+                <td><span class="badge badge-neutral text-xs">{{ h.entryType || 'DELIVERY' }}</span></td>
+                <td class="font-mono">&#8377;{{ h.deliveryFees | number:'1.0-0' }}</td>
+                <td class="font-mono" style="color:var(--color-success)">{{ h.tips > 0 ? '&#8377;' + (h.tips | number:'1.0-0') : '&mdash;' }}</td>
+                <td class="font-mono" style="color:var(--color-warning)">{{ h.incentives > 0 ? '&#8377;' + (h.incentives | number:'1.0-0') : '&mdash;' }}</td>
+                <td class="font-mono font-600">&#8377;{{ h.totalEarnings | number:'1.0-0' }}</td>
+                <td class="font-mono text-xs text-tertiary">{{ h.settlementId || '&mdash;' }}</td>
+                <td class="text-secondary text-xs">{{ h.settledAt ? (h.settledAt | slice:0:10) : '&mdash;' }}</td>
+              </tr>
+            </ng-container>
           </tbody>
         </table>
       </div>
@@ -214,15 +227,23 @@ import { ApiService } from '../../core/services/api.service';
     <div class="card section-card cod-section" *ngIf="codItems.length > 0">
       <div class="section-header">
         <div class="section-title-row">
-          <span class="section-title">&#128181; COD Cash Collected</span>
-          <span class="badge badge-warning">{{ codItems.length }} orders &middot; &#8377;{{ summary.totalCashCollected | number:'1.0-0' }}</span>
+          <span class="section-title">&#128181; Pending COD Return</span>
+          <span class="badge badge-warning">{{ pendingCodItems.length }} orders &middot; &#8377;{{ pendingCodTotal | number:'1.0-0' }}</span>
         </div>
-        <span class="cod-note">Cash held by rider on behalf of platform &mdash; must be returned before settlement</span>
+        <div class="settle-actions" *ngIf="selectedCod.length > 0">
+          <input class="form-input settle-id-input" [(ngModel)]="codSettlementId" placeholder="Enter COD Settlement ID" />
+          <button class="btn btn-success btn-sm" (click)="markCodSettled()" [disabled]="!codSettlementId || codSettling">
+            {{ codSettling ? 'Settling...' : 'Mark ' + selectedCod.length + ' COD as Settled' }}
+          </button>
+        </div>
       </div>
-      <div class="table-wrap">
+      <div class="cod-note-row">Cash held by rider on behalf of platform must be returned before payout reconciliation.</div>
+      <div *ngIf="pendingCodItems.length === 0" class="empty-row">No pending COD cash in this period</div>
+      <div class="table-wrap" *ngIf="pendingCodItems.length > 0">
         <table class="data-table">
           <thead>
             <tr>
+              <th><input type="checkbox" (change)="toggleSelectAllCod($event)" [checked]="allPendingCodSelected" /></th>
               <th>Order ID</th>
               <th>Date</th>
               <th>Cash Collected</th>
@@ -230,7 +251,8 @@ import { ApiService } from '../../core/services/api.service';
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let c of codItems" class="cod-row">
+            <tr *ngFor="let c of pendingCodItems" class="cod-row">
+              <td><input type="checkbox" [checked]="isCodSelected(c.orderId)" (change)="toggleCodSelect(c.orderId)" /></td>
               <td class="font-mono text-xs">
                 <button class="order-link" (click)="navigateToOrder(c.orderId)">{{ c.orderId | slice:0:16 }}&hellip;</button>
               </td>
@@ -238,6 +260,45 @@ import { ApiService } from '../../core/services/api.service';
               <td class="font-mono font-600 cod-amount">&#8377;{{ c.cashCollected | number:'1.0-0' }}</td>
               <td><span class="badge badge-warning text-xs">&#8617; Return to Platform</span></td>
             </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="section-header sub-section-header" *ngIf="settledCodItems.length > 0">
+        <div class="section-title-row">
+          <span class="section-title">Settled COD Returns</span>
+          <span class="badge badge-success">{{ settledCodItems.length }} orders &middot; &#8377;{{ settledCodTotal | number:'1.0-0' }}</span>
+        </div>
+      </div>
+      <div class="table-wrap" *ngIf="settledCodItems.length > 0">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Order ID</th>
+              <th>Date</th>
+              <th>Cash Collected</th>
+              <th>Settlement ID</th>
+              <th>Settled At</th>
+            </tr>
+          </thead>
+          <tbody>
+            <ng-container *ngFor="let group of settledCodGroups">
+              <tr class="settlement-group-row cod-row">
+                <td colspan="5">
+                  <strong class="font-mono">{{ group.settlementId }}</strong>
+                  <span>{{ group.count }} CODs &middot; &#8377;{{ group.total | number:'1.0-0' }} &middot; {{ group.settledAt ? (group.settledAt | slice:0:10) : 'No date' }}</span>
+                </td>
+              </tr>
+              <tr *ngFor="let c of group.items" class="cod-row">
+                <td class="font-mono text-xs">
+                  <button class="order-link" (click)="navigateToOrder(c.orderId)">{{ c.orderId | slice:0:16 }}&hellip;</button>
+                </td>
+                <td class="text-secondary">{{ c.date | slice:0:10 }}</td>
+                <td class="font-mono font-600 cod-amount">&#8377;{{ c.cashCollected | number:'1.0-0' }}</td>
+                <td class="font-mono text-xs text-tertiary">{{ c.settlementId || '&mdash;' }}</td>
+                <td class="text-secondary text-xs">{{ c.settledAt ? (c.settledAt | slice:0:10) : '&mdash;' }}</td>
+              </tr>
+            </ng-container>
           </tbody>
         </table>
       </div>
@@ -318,9 +379,18 @@ import { ApiService } from '../../core/services/api.service';
     /* COD section */
     .cod-section { border-left: 3px solid var(--color-warning, #f59e0b); }
     .cod-note { font-size: 11px; color: var(--color-text-secondary); }
+    .cod-note-row { padding: 10px 16px; color: var(--color-text-secondary); font-size: 12px; border-bottom: 1px solid var(--color-border); }
     .cod-row { background: rgba(245, 158, 11, 0.04); }
     .cod-amount { color: var(--color-warning, #f59e0b) !important; }
     .cod-stat { border-top: 2px solid var(--color-warning, #f59e0b); }
+    .sub-section-header { border-top: 1px solid var(--color-border); }
+    .settlement-group-row td {
+      background: var(--color-bg-tertiary);
+      color: var(--color-text-secondary);
+      font-size: 12px;
+      padding: 9px 12px;
+    }
+    .settlement-group-row strong { margin-right: 10px; color: var(--color-text-primary); }
 
     /* Mobile responsive */
     @media (max-width: 1100px) {
@@ -347,7 +417,9 @@ export class RiderEarningsComponent implements OnInit {
   historyItems: any[] = [];
   loading = false;
   settling = false;
+  codSettling = false;
   settlementId = '';
+  codSettlementId = '';
 
   allRiders: any[] = [];
   ridersLoading = false;
@@ -355,6 +427,7 @@ export class RiderEarningsComponent implements OnInit {
   riderDropOpen = false;
   selectedRider: any = null;
   selectedUnsettled: string[] = [];
+  selectedCod: string[] = [];
 
   private _closeRiderTimer: any;
 
@@ -368,13 +441,22 @@ export class RiderEarningsComponent implements OnInit {
   }
 
   get codItems(): any[] { return this.historyItems.filter(h => h.entryType === 'COD_AMOUNT_COLLECTED'); }
+  get pendingCodItems(): any[] { return this.codItems.filter(h => !h.settled); }
+  get settledCodItems(): any[] { return this.codItems.filter(h => h.settled); }
   get unsettledItems(): any[] { return this.historyItems.filter(h => !h.settled && h.entryType !== 'COD_AMOUNT_COLLECTED'); }
   get settledItems(): any[] { return this.historyItems.filter(h => h.settled && h.entryType !== 'COD_AMOUNT_COLLECTED'); }
   get unsettledTotal(): number { return this.unsettledItems.reduce((s, h) => s + (h.totalEarnings || 0), 0); }
   get settledTotal(): number { return this.settledItems.reduce((s, h) => s + (h.totalEarnings || 0), 0); }
+  get pendingCodTotal(): number { return this.pendingCodItems.reduce((s, h) => s + (h.cashCollected || 0), 0); }
+  get settledCodTotal(): number { return this.settledCodItems.reduce((s, h) => s + (h.cashCollected || 0), 0); }
   get allUnsettledSelected(): boolean {
     return this.unsettledItems.length > 0 && this.unsettledItems.every(h => this.selectedUnsettled.includes(h.orderId));
   }
+  get allPendingCodSelected(): boolean {
+    return this.pendingCodItems.length > 0 && this.pendingCodItems.every(h => this.selectedCod.includes(h.orderId));
+  }
+  get settledGroups(): any[] { return this.groupBySettlement(this.settledItems, 'totalEarnings'); }
+  get settledCodGroups(): any[] { return this.groupBySettlement(this.settledCodItems, 'cashCollected'); }
 
   riderLabel(r: any): string {
     if (!r) return '';
@@ -382,6 +464,7 @@ export class RiderEarningsComponent implements OnInit {
   }
 
   isSelected(orderId: string): boolean { return this.selectedUnsettled.includes(orderId); }
+  isCodSelected(orderId: string): boolean { return this.selectedCod.includes(orderId); }
 
   toggleSelect(orderId: string): void {
     const idx = this.selectedUnsettled.indexOf(orderId);
@@ -389,9 +472,20 @@ export class RiderEarningsComponent implements OnInit {
     else this.selectedUnsettled.push(orderId);
   }
 
+  toggleCodSelect(orderId: string): void {
+    const idx = this.selectedCod.indexOf(orderId);
+    if (idx >= 0) this.selectedCod.splice(idx, 1);
+    else this.selectedCod.push(orderId);
+  }
+
   toggleSelectAll(event: Event): void {
     const checked = (event.target as HTMLInputElement).checked;
     this.selectedUnsettled = checked ? this.unsettledItems.map(h => h.orderId) : [];
+  }
+
+  toggleSelectAllCod(event: Event): void {
+    const checked = (event.target as HTMLInputElement).checked;
+    this.selectedCod = checked ? this.pendingCodItems.map(h => h.orderId) : [];
   }
 
   pickRider(r: any): void {
@@ -409,6 +503,8 @@ export class RiderEarningsComponent implements OnInit {
     this.riderDropOpen = false;
     this.summary = null;
     this.historyItems = [];
+    this.settlementId = '';
+    this.codSettlementId = '';
   }
 
   scheduleCloseRider(): void {
@@ -439,6 +535,9 @@ export class RiderEarningsComponent implements OnInit {
     this.summary = null;
     this.historyItems = [];
     this.selectedUnsettled = [];
+    this.selectedCod = [];
+    this.settlementId = '';
+    this.codSettlementId = '';
     this.api.getRiderEarningsHistory(this.riderId, this.startDate, this.endDate).subscribe({
       next: (res: any) => {
         const items: any[] = res.history || [];
@@ -476,6 +575,45 @@ export class RiderEarningsComponent implements OnInit {
       },
       error: () => { this.settling = false; }
     });
+  }
+
+  markCodSettled(): void {
+    if (!this.codSettlementId || this.selectedCod.length === 0) return;
+    this.codSettling = true;
+    this.api.settleRiderCod(this.riderId, {
+      orderIds: [...this.selectedCod],
+      startDate: this.startDate,
+      endDate: this.endDate,
+      settlementId: this.codSettlementId
+    }).subscribe({
+      next: () => {
+        this.codSettling = false;
+        this.codSettlementId = '';
+        this.selectedCod = [];
+        this.loadEarnings();
+      },
+      error: () => { this.codSettling = false; }
+    });
+  }
+
+  private groupBySettlement(items: any[], amountKey: string): any[] {
+    const groups = new Map<string, any>();
+    items.forEach((item) => {
+      const settlementId = item.settlementId || 'No settlement ID';
+      const group = groups.get(settlementId) || {
+        settlementId,
+        settledAt: item.settledAt,
+        count: 0,
+        total: 0,
+        items: [],
+      };
+      group.count += 1;
+      group.total += Number(item[amountKey] || 0);
+      group.settledAt = group.settledAt || item.settledAt;
+      group.items.push(item);
+      groups.set(settlementId, group);
+    });
+    return Array.from(groups.values());
   }
 }
 

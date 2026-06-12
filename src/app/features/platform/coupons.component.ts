@@ -203,6 +203,7 @@ interface CouponForm {
           <th>Mode</th>
           <th>Discount</th>
           <th>Scope</th>
+          <th>Uses</th>
           <th>Rules</th>
           <th>End Date</th>
           <th>Status</th>
@@ -221,6 +222,7 @@ interface CouponForm {
             <div>{{ scopeLabel(c) }}</div>
             <div class="muted" *ngIf="c.issuedBy">{{ c.issuedBy }}</div>
           </td>
+          <td class="font-mono">{{ c.uses || 0 }}</td>
           <td>
             <div>{{ ruleLabel(c) }}</div>
             <div class="muted" *ngIf="targetCount(c)">{{ targetCount(c) }} targeted customers</div>
@@ -237,7 +239,7 @@ interface CouponForm {
           </td>
         </tr>
         <tr *ngIf="coupons.length === 0">
-          <td colspan="8" style="text-align:center;color:var(--color-400);padding:24px">No coupons found</td>
+          <td colspan="9" style="text-align:center;color:var(--color-400);padding:24px">No coupons found</td>
         </tr>
       </tbody>
     </table>
@@ -258,6 +260,10 @@ interface CouponForm {
         <div class="mc-row">
           <span class="mc-label">Rules</span>
           <span class="mc-val">{{ ruleLabel(c) }}</span>
+        </div>
+        <div class="mc-row">
+          <span class="mc-label">Uses</span>
+          <span class="mc-val">{{ c.uses || 0 }}</span>
         </div>
         <div class="mc-row">
           <span class="mc-label">End Date</span>

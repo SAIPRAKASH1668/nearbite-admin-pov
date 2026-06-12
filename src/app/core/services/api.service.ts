@@ -181,6 +181,10 @@ export class ApiService {
     return this.post<any>(`/api/v1/riders/${riderId}/earnings/settle`, body);
   }
 
+  settleRiderCod(riderId: string, body: { orderIds: string[], startDate: string, endDate: string, settlementId: string }) {
+    return this.post<any>(`/api/v1/riders/${riderId}/earnings/cod/settle`, body);
+  }
+
   // ─── Restaurants ──────────────────────────────────────────────────────────
   // Default to Nandhyal city center — backend requires lat/lng for geohash query
   private readonly DEFAULT_LAT = 15.4877;
@@ -224,7 +228,7 @@ export class ApiService {
 
   // ─── Coupons ──────────────────────────────────────────────────────────────
   listCoupons() {
-    return this.get<any>('/api/v1/coupons/available');
+    return this.get<any>('/api/v1/coupons');
   }
 
   createCoupon(data: any) {
