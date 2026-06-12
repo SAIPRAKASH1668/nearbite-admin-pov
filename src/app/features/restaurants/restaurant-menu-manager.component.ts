@@ -1,6 +1,8 @@
 import { Component, Input, OnChanges, SimpleChanges } from '@angular/core';
 import { CommonModule, CurrencyPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { forkJoin, of } from 'rxjs';
+import { catchError, map } from 'rxjs/operators';
 import { ApiService } from '../../core/services/api.service';
 import { ImageUploaderComponent } from '../../shared/components/image-uploader/image-uploader.component';
 
@@ -25,11 +27,14 @@ import { ImageUploaderComponent } from '../../shared/components/image-uploader/i
     </div>
     <div class="mm-actions">
       <button class="btn btn-ghost btn-sm" (click)="loadMenu()" [disabled]="!restaurantId">↻</button>
-      <button class="btn btn-secondary btn-sm" (click)="openBulkHike()" [disabled]="!menuItems.length">Price hike</button>
+      <button class="btn btn-secondary btn-sm" (click)="openBulkHike()" [disabled]="!menuItems.length" title="Raise base prices (restaurantPrice) by a %">Price hike</button>
+      <button class="btn btn-secondary btn-sm" (click)="openBulkHikeAdjust()" [disabled]="!menuItems.length" title="Increase / decrease the markup (hike %) on all items">Adjust hike %</button>
       <button class="btn btn-secondary btn-sm" (click)="openBulkShifts()" [disabled]="!menuItems.length">Category shifts</button>
       <button class="btn btn-primary btn-sm" (click)="openCreate()" [disabled]="!restaurantId">＋ Add item</button>
     </div>
   </div>
+
+  <div *ngIf="notice" class="notice">{{ notice }} <button class="notice-x" (click)="notice=''">✕</button></div>
 
   <!-- Category tabs -->
   <div *ngIf="categories.length" class="tab-scroll">
@@ -249,6 +254,33 @@ import { ImageUploaderComponent } from '../../shared/components/image-uploader/i
     </div>
   </div>
 
+  <!-- Bulk hike-% adjust modal -->
+  <div class="modal-overlay" *ngIf="showBulkHikeAdjust" (click)="showBulkHikeAdjust=false">
+    <div class="modal-sheet small" (click)="$event.stopPropagation()">
+      <div class="modal-header"><div class="modal-title">Adjust hike %</div><button class="modal-close" (click)="showBulkHikeAdjust=false">&#x2715;</button></div>
+      <div class="modal-body">
+        <p class="muted" style="font-size:12px">Changes the markup (hike %) on every item. Customer price is recomputed as cost × (1 + hike%). Hike % can't go below 0.</p>
+        <div class="form-group">
+          <label>Operation</label>
+          <select class="form-select" [(ngModel)]="hikeAdjustMode">
+            <option value="increase">Increase by</option>
+            <option value="decrease">Decrease by</option>
+            <option value="set">Set all to</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>{{ hikeAdjustMode === 'set' ? 'Hike %' : 'Percentage points' }}</label>
+          <input class="form-input" type="number" step="any" min="0" [(ngModel)]="hikeAdjustValue" />
+        </div>
+        <p class="muted" style="font-size:11px">Applies to all {{ menuItems.length }} items.</p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" style="flex:1" (click)="showBulkHikeAdjust=false">Cancel</button>
+        <button class="btn btn-primary" style="flex:2" (click)="applyBulkHikeAdjust()" [disabled]="bulkSaving || !canApplyHikeAdjust">{{ bulkSaving ? 'Applying...' : 'Apply' }}</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Bulk category-shifts modal -->
   <div class="modal-overlay" *ngIf="showBulkShifts" (click)="showBulkShifts=false">
     <div class="modal-sheet" (click)="$event.stopPropagation()">
@@ -295,6 +327,8 @@ import { ImageUploaderComponent } from '../../shared/components/image-uploader/i
     .empty { padding:40px 16px; text-align:center; color:#666; font-size:14px; }
     .muted { color:#777; }
     .dz-error { color:#f87171; font-size:12px; margin-top:8px; }
+    .notice { display:flex; align-items:center; justify-content:space-between; gap:8px; background:rgba(34,197,94,.1); color:#4ade80; border-radius:8px; padding:8px 12px; font-size:12px; margin-bottom:12px; }
+    .notice-x { background:none; border:none; color:inherit; cursor:pointer; font-size:12px; }
 
     .mm-cards { display:flex; flex-direction:column; gap:8px; }
     .mm-card { background:#161616; border:1px solid #222; border-radius:14px; padding:12px; }
@@ -349,10 +383,14 @@ export class RestaurantMenuManagerComponent implements OnChanges {
 
   showBulkHike = false;
   bulkHikePct: number | null = null;
+  showBulkHikeAdjust = false;
+  hikeAdjustMode: 'increase' | 'decrease' | 'set' = 'increase';
+  hikeAdjustValue: number | null = null;
   showBulkShifts = false;
   bulkShiftCategory = '';
   bulkShifts: any[] = [];
   bulkSaving = false;
+  notice = '';
 
   constructor(private api: ApiService) {}
 
@@ -510,6 +548,58 @@ export class RestaurantMenuManagerComponent implements OnChanges {
     this.api.bulkMenuPriceHike(this.restaurantId, pct).subscribe({
       next: () => { this.bulkSaving = false; this.showBulkHike = false; this.bulkHikePct = null; this.loadMenu(); },
       error: () => { this.bulkSaving = false; },
+    });
+  }
+
+  // Bulk adjust the markup (hike %) across all items — increase / decrease / set.
+  openBulkHikeAdjust(): void { this.hikeAdjustMode = 'increase'; this.hikeAdjustValue = null; this.showBulkHikeAdjust = true; }
+
+  get canApplyHikeAdjust(): boolean {
+    const v = this.hikeAdjustValue;
+    if (v == null || isNaN(+v)) return false;
+    return this.hikeAdjustMode === 'set' ? +v >= 0 : +v > 0;
+  }
+
+  applyBulkHikeAdjust(): void {
+    if (!this.canApplyHikeAdjust || this.bulkSaving) return;
+    const val = +(this.hikeAdjustValue as any);
+
+    // Compute the new hike % per item; skip items that don't change.
+    const changes: { item: any; next: number }[] = [];
+    for (const item of this.menuItems) {
+      const cur = +item.hikePercentage || 0;
+      let next = cur;
+      if (this.hikeAdjustMode === 'increase') next = cur + val;
+      else if (this.hikeAdjustMode === 'decrease') next = Math.max(0, cur - val);
+      else next = Math.max(0, val);
+      next = Math.round(next * 100) / 100;
+      if (next !== cur) changes.push({ item, next });
+    }
+
+    if (!changes.length) { this.showBulkHikeAdjust = false; this.notice = 'No items needed a change.'; return; }
+
+    const verb = this.hikeAdjustMode === 'set' ? `set hike % to ${val}` : `${this.hikeAdjustMode} hike % by ${val}`;
+    if (!confirm(`This will ${verb} on ${changes.length} item(s). Continue?`)) return;
+
+    this.bulkSaving = true;
+    this.notice = '';
+    const calls = changes.map(c =>
+      this.api.updateMenuItem(this.restaurantId, c.item.itemId || c.item.id, { hikePercentage: c.next }).pipe(
+        map(() => ({ ok: true, c })),
+        catchError(() => of({ ok: false, c })),
+      )
+    );
+    forkJoin(calls).subscribe({
+      next: (results: any[]) => {
+        const okResults = results.filter(r => r.ok);
+        okResults.forEach(r => { r.c.item.hikePercentage = r.c.next; });
+        const failed = results.length - okResults.length;
+        this.bulkSaving = false;
+        this.showBulkHikeAdjust = false;
+        this.notice = `Hike % updated on ${okResults.length} item(s)` + (failed ? `, ${failed} failed.` : '.');
+        this.loadMenu();
+      },
+      error: () => { this.bulkSaving = false; this.notice = 'Bulk hike-% update failed.'; },
     });
   }
 
