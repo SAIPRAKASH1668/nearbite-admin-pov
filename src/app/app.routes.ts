@@ -27,6 +27,9 @@ export const routes: Routes = [
       { path: 'restaurants/manage', loadComponent: () => import('./features/restaurants/restaurant-manage.component').then(m => m.RestaurantManageComponent) },
       { path: 'menu', loadComponent: () => import('./features/restaurants/all-menu.component').then(m => m.AllMenuComponent) },
 
+      // Customer
+      { path: 'customer-config', loadComponent: () => import('./features/customers/customer-config.component').then(m => m.CustomerConfigComponent) },
+
       // Platform
       { path: 'coupons', loadComponent: () => import('./features/platform/coupons.component').then(m => m.CouponsComponent) },
       { path: 'notifications', loadComponent: () => import('./features/platform/notifications.component').then(m => m.NotificationsComponent) },
@@ -34,6 +37,7 @@ export const routes: Routes = [
       { path: 'food-categories', loadComponent: () => import('./features/platform/food-categories.component').then(m => m.FoodCategoriesComponent) },
       { path: 'config', loadComponent: () => import('./features/platform/config.component').then(m => m.ConfigComponent) },
       { path: 'revenue', loadComponent: () => import('./features/platform/revenue-reports.component').then(m => m.RevenueReportsComponent) },
+      { path: 'gst-export', loadComponent: () => import('./features/platform/gst-invoice-export.component').then(m => m.GstInvoiceExportComponent) },
     ]
   },
   { path: '**', redirectTo: 'dashboard' }

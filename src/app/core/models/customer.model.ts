@@ -63,7 +63,11 @@ export interface Customer {
   blockReason?: string;
   blockedAt?: Date;
   blockedBy?: string;
-  
+
+  // COD controls (admin-managed risk flags; set via the Customer Config dashboard)
+  disableCod?: boolean;
+  forceCod?: boolean;
+
   // Metadata
   registeredAt: Date;
   lastOrderAt?: Date;

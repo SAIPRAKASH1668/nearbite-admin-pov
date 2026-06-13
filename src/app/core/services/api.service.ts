@@ -335,6 +335,19 @@ export class ApiService {
     return this.post<any>('/api/v1/notifications/send', data);
   }
 
+  // ─── Customers / Users ──────────────────────────────────────────────────
+  // Fetch a user row by phone (role defaults to CUSTOMER). Standard JWT auth;
+  // the response may include the disableCod / forceCod flags when set.
+  getUserByPhone(phone: string, role: 'CUSTOMER' | 'RIDER' = 'CUSTOMER') {
+    return this.get<any>(`/api/v1/users/${encodeURIComponent(phone)}`, { role });
+  }
+
+  // Set a customer's COD risk flags (admin/ops — requires ADMIN_API_KEY via
+  // X-Api-Key). Send whichever flags should change; returns the updated user.
+  setCustomerCodToggles(phone: string, body: { disableCod?: boolean; forceCod?: boolean; opsUser?: string }) {
+    return this.post<any>(`/api/v1/ops/users/${encodeURIComponent(phone)}/cod-toggles`, body);
+  }
+
   // ─── Rider Slots (admin/ops — requires ADMIN_API_KEY via X-Api-Key) ─────────
   listRiderSlots() {
     return this.get<any>('/api/v1/ops/rider-slots');
