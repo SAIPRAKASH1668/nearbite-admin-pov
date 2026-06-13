@@ -1,9 +1,9 @@
 /**
  * GST Export — downloads DELIVERED orders for a date range as a GSTR-1 .xlsx.
  *
- * One row per delivered order, 5 columns:
+ * One row per delivered order, 6 columns:
  *   GSTIN/UIN of Recipient (blank — no GSTIN stored) · Invoice Number (orderId) ·
- *   Invoice date (DD-MMM-YYYY) · Invoice Value (foodTotal only) · Rate (5%).
+ *   Restaurant Name · Invoice date (DD-MMM-YYYY) · Invoice Value (foodTotal only) · Rate (5%).
  *
  * Frontend-only: reads delivered orders via the existing date-range API and
  * builds the workbook client-side with SheetJS.
@@ -49,7 +49,7 @@ function firstOfThisMonth(): string {
           </button>
         </div>
       </div>
-      <p class="hint">One row per delivered order · columns: GSTIN/UIN of Recipient (blank), Invoice Number, Invoice date, Invoice Value (food value), Rate (5%).</p>
+      <p class="hint">One row per delivered order · columns: GSTIN/UIN of Recipient (blank), Invoice Number, Restaurant Name, Invoice date, Invoice Value (food value), Rate (5%).</p>
     </div>
   </div>
 
@@ -104,10 +104,11 @@ export class GstInvoiceExportComponent {
           return;
         }
 
-        const header = ['GSTIN/UIN of Recipient', 'Invoice Number', 'Invoice date', 'Invoice Value', 'Rate'];
+        const header = ['GSTIN/UIN of Recipient', 'Invoice Number', 'Restaurant Name', 'Invoice date', 'Invoice Value', 'Rate'];
         const rows = orders.map((o: any) => [
           '',                                                   // GSTIN/UIN of Recipient — not stored (B2C)
           o.orderId || '',
+          o.restaurantName || '',                              // Restaurant Name (blank if not stored on the order)
           this.formatGstDate(o.createdAt),
           Math.round((Number(o.foodTotal) || 0) * 100) / 100,  // Invoice Value = food value only
           this.GST_RATE_FOOD,
