@@ -38,6 +38,7 @@ export const routes: Routes = [
       { path: 'config', loadComponent: () => import('./features/platform/config.component').then(m => m.ConfigComponent) },
       { path: 'revenue', loadComponent: () => import('./features/platform/revenue-reports.component').then(m => m.RevenueReportsComponent) },
       { path: 'gst-export', loadComponent: () => import('./features/platform/gst-invoice-export.component').then(m => m.GstInvoiceExportComponent) },
+      { path: 'gst-revenue', loadComponent: () => import('./features/platform/gst-revenue.component').then(m => m.GstRevenueComponent) },
     ]
   },
   { path: '**', redirectTo: 'dashboard' }
