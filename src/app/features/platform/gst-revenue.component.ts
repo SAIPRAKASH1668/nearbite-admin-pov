@@ -1,11 +1,14 @@
 /**
  * GST Revenue — downloads platform GST revenue for a date range as .xlsx.
  *
- * For each DELIVERED order, emits THREE rows (all at Rate 18%):
- *   1. Invoice Value = revenue.platformRevenue.finalPayout - revenue.platformRevenue.platformFee  (commission)
- *   2. Invoice Value = calculatedFeeResponse.deliveryFee                                           (delivery)
- *   3. Invoice Value = revenue.platformRevenue.platformFee                                         (platform fee)
- * Columns: Invoice Number (orderId), Restaurant Name, Invoice Date (DD-MMM-YYYY), Invoice Value, Rate.
+ * For each DELIVERED order, emits THREE rows (all at Rate 18%). Invoice Value is
+ * the order grandTotal (same on all 3 rows); the per-row Taxable Value is:
+ *   1. Taxable Value = revenue.platformRevenue.finalPayout - revenue.platformRevenue.platformFee  (commission)
+ *   2. Taxable Value = calculatedFeeResponse.deliveryFee                                           (delivery)
+ *   3. Taxable Value = revenue.platformRevenue.platformFee                                         (platform fee)
+ * Columns: Invoice Number (orderId), Restaurant Name, Invoice Date (DD-MMM-YYYY),
+ * Invoice Value (grandTotal), Place Of Supply, Reverse Charge, Applicable % of Tax Rate,
+ * Invoice Type, E-Commerce GSTIN, Rate, Taxable Value, Cess Amount.
  *
  * Frontend-only: reads delivered orders via the existing date-range API and
  * builds the workbook client-side with SheetJS.
@@ -51,7 +54,7 @@ function firstOfThisMonth(): string {
           </button>
         </div>
       </div>
-      <p class="hint">3 rows per delivered order @ 18% — (1) platform commission [finalPayout − platformFee], (2) delivery fee, (3) platform fee. Columns: Invoice Number, Restaurant Name, Invoice Date, Invoice Value, Rate.</p>
+      <p class="hint">GSTR-1 B2B layout. 3 rows per delivered order @ 18% — Invoice Value = order grand total; Taxable Value = (1) platform commission [finalPayout − platformFee], (2) delivery fee, (3) platform fee. Place of Supply 37-Andhra Pradesh, Reverse Charge N, Invoice Type Regular B2B, Cess 0.</p>
     </div>
   </div>
 
@@ -75,6 +78,11 @@ function firstOfThisMonth(): string {
 })
 export class GstRevenueComponent {
   private readonly RATE = 18; // GST rate (%) on platform services
+  private readonly PLACE_OF_SUPPLY = '37-Andhra Pradesh';
+  private readonly REVERSE_CHARGE = 'N';
+  private readonly INVOICE_TYPE = 'Regular B2B';
+  private readonly ECOMMERCE_GSTIN = '';
+  private readonly CESS_AMOUNT = 0;
 
   startDate = firstOfThisMonth();
   endDate = new Date().toISOString().split('T')[0];
@@ -101,7 +109,11 @@ export class GstRevenueComponent {
           return;
         }
 
-        const header = ['Invoice Number', 'Restaurant Name', 'Invoice Date', 'Invoice Value', 'Rate'];
+        const header = [
+          'Invoice Number', 'Restaurant Name', 'Invoice Date', 'Invoice Value',
+          'Place Of Supply', 'Reverse Charge', 'Applicable % of Tax Rate', 'Invoice Type',
+          'E-Commerce GSTIN', 'Rate', 'Taxable Value', 'Cess Amount',
+        ];
         const rows: any[][] = [header];
         for (const o of orders) {
           const pr = o?.revenue?.platformRevenue || {};
@@ -109,11 +121,16 @@ export class GstRevenueComponent {
           const invNo = o?.orderId || '';
           const rName = o?.restaurantName || '';
           const invDate = this.formatGstDate(o?.createdAt);
+          const invoiceValue = this.round2(this.num(o?.grandTotal));
           const commission = this.num(pr.finalPayout) - this.num(pr.platformFee);
           const deliveryFee = this.num(cfr.deliveryFee);
           const platformFee = this.num(pr.platformFee);
-          for (const value of [commission, deliveryFee, platformFee]) {
-            rows.push([invNo, rName, invDate, this.round2(value), this.RATE]);
+          for (const taxable of [commission, deliveryFee, platformFee]) {
+            rows.push([
+              invNo, rName, invDate, invoiceValue,
+              this.PLACE_OF_SUPPLY, this.REVERSE_CHARGE, this.RATE, this.INVOICE_TYPE,
+              this.ECOMMERCE_GSTIN, this.RATE, this.round2(taxable), this.CESS_AMOUNT,
+            ]);
           }
         }
 
