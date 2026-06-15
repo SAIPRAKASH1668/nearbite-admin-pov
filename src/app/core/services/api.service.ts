@@ -275,7 +275,7 @@ export class ApiService {
 
   // ─── Coupons ──────────────────────────────────────────────────────────────
   listCoupons() {
-    return this.get<any>('/api/v1/coupons');
+    return this.get<any>('/api/v1/coupons/available');
   }
 
   createCoupon(data: any) {
@@ -305,6 +305,14 @@ export class ApiService {
     return this.post<any>('/api/v1/config/home-hero-banner', data);
   }
 
+  getDailyDealPopup() {
+    return this.get<any>('/api/v1/config/daily-deal-popup', { admin: true });
+  }
+
+  saveDailyDealPopup(data: any) {
+    return this.post<any>('/api/v1/config/daily-deal-popup', data);
+  }
+
   getAppVersion() {
     return this.get<any>('/api/v1/config/app-version');
   }
@@ -331,8 +339,8 @@ export class ApiService {
   }
 
   // ─── Notifications ────────────────────────────────────────────────────────
-  sendNotification(data: any) {
-    return this.post<any>('/api/v1/notifications/send', data);
+  getRestaurantNotificationHealth() {
+    return this.get<any>('/api/v1/admin/restaurants/notification-health');
   }
 
   // ─── Customers / Users ──────────────────────────────────────────────────

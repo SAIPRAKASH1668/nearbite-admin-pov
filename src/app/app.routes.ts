@@ -34,6 +34,7 @@ export const routes: Routes = [
       { path: 'coupons', loadComponent: () => import('./features/platform/coupons.component').then(m => m.CouponsComponent) },
       { path: 'notifications', loadComponent: () => import('./features/platform/notifications.component').then(m => m.NotificationsComponent) },
       { path: 'hero-banner', loadComponent: () => import('./features/platform/hero-banner.component').then(m => m.HeroBannerComponent) },
+      { path: 'daily-deal', loadComponent: () => import('./features/platform/daily-deal.component').then(m => m.DailyDealComponent) },
       { path: 'food-categories', loadComponent: () => import('./features/platform/food-categories.component').then(m => m.FoodCategoriesComponent) },
       { path: 'config', loadComponent: () => import('./features/platform/config.component').then(m => m.ConfigComponent) },
       { path: 'revenue', loadComponent: () => import('./features/platform/revenue-reports.component').then(m => m.RevenueReportsComponent) },
