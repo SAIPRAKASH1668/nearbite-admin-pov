@@ -49,6 +49,76 @@ import { ApiService } from '../../core/services/api.service';
     </div>
   </div>
 
+  <!-- Coupon Blocks -->
+  <div class="config-section">
+    <div class="section-header">
+      <div class="section-title">Customer Coupon Blocks</div>
+      <span class="source-badge">global config</span>
+    </div>
+
+    <div class="coupon-block-body">
+      <div class="coupon-block-grid">
+        <div class="form-group">
+          <label>Restaurant</label>
+          <select class="form-select" [(ngModel)]="selectedCouponBlockRestaurantId" (ngModelChange)="onCouponBlockRestaurantChange()">
+            <option value="">Select restaurant</option>
+            <option *ngFor="let r of restaurants" [value]="r.restaurantId">
+              {{ r.name || r.restaurantName || r.restaurantId }}
+            </option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Coupon</label>
+          <div class="inline-action">
+            <select class="form-select" [(ngModel)]="selectedCouponToBlock" [disabled]="!selectedCouponBlockRestaurantId || couponsLoading">
+              <option value="">{{ couponsLoading ? 'Loading coupons...' : 'Select coupon' }}</option>
+              <option *ngFor="let code of availableCouponCodes" [value]="code">{{ code }}</option>
+            </select>
+            <button class="btn btn-secondary btn-sm" (click)="addSelectedCouponBlock()" [disabled]="!selectedCouponToBlock">Add</button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Manual Code</label>
+          <div class="inline-action">
+            <input class="form-input" [(ngModel)]="manualCouponCode" placeholder="SAVE20" style="text-transform:uppercase" [disabled]="!selectedCouponBlockRestaurantId" />
+            <button class="btn btn-secondary btn-sm" (click)="addManualCouponBlock()" [disabled]="!manualCouponCode.trim() || !selectedCouponBlockRestaurantId">Add</button>
+          </div>
+        </div>
+      </div>
+
+      <ng-container *ngIf="selectedCouponBlockRestaurantId; else pickRestaurant">
+        <div class="blocked-summary">
+          <div>
+            <strong>{{ selectedCouponBlockRestaurantName }}</strong>
+            <span>{{ selectedRestaurantBlockedCoupons.length }} blocked coupon{{ selectedRestaurantBlockedCoupons.length === 1 ? '' : 's' }}</span>
+          </div>
+          <button class="btn btn-primary" (click)="saveCouponBlocks()" [disabled]="couponBlockSaving || globalLoading || !!globalParseError">
+            {{ couponBlockSaving ? 'Saving&hellip;' : 'Save Coupon Blocks' }}
+          </button>
+        </div>
+
+        <div class="blocked-list" *ngIf="selectedRestaurantBlockedCoupons.length; else noBlockedCoupons">
+          <span class="blocked-chip" *ngFor="let code of selectedRestaurantBlockedCoupons">
+            <span class="font-mono">{{ code }}</span>
+            <button type="button" (click)="removeBlockedCoupon(code)" aria-label="Remove coupon">&times;</button>
+          </span>
+        </div>
+      </ng-container>
+
+      <ng-template #pickRestaurant>
+        <div class="empty-state">Select a restaurant to manage hidden customer coupons.</div>
+      </ng-template>
+
+      <ng-template #noBlockedCoupons>
+        <div class="empty-state">No blocked coupons for this restaurant.</div>
+      </ng-template>
+
+      <div *ngIf="couponBlockSaveMsg" [class]="'save-msg save-' + couponBlockSaveMsgType">{{ couponBlockSaveMsg }}</div>
+    </div>
+  </div>
+
   <!-- Restaurant Config -->
   <div class="config-section">
     <div class="section-header">
@@ -106,6 +176,19 @@ import { ApiService } from '../../core/services/api.service';
     .resto-select-row { display:flex; align-items:center; gap:12px; padding:16px 20px; border-bottom:1px solid var(--color-border,#222); }
     .resto-select { max-width:340px; }
     .loading-text { font-size:12px; color:var(--color-400,#888); }
+    .coupon-block-body { padding:16px 20px; display:flex; flex-direction:column; gap:16px; }
+    .coupon-block-grid { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:12px; }
+    .form-group { display:flex; flex-direction:column; gap:6px; }
+    .form-group label { font-size:12px; font-weight:700; color:var(--color-text-secondary,#cbd5e1); }
+    .inline-action { display:flex; gap:8px; align-items:center; }
+    .inline-action .form-select, .inline-action .form-input { min-width:0; }
+    .blocked-summary { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px; border:1px solid var(--color-border,#222); border-radius:8px; background:var(--color-bg-secondary,#161616); }
+    .blocked-summary div { display:flex; flex-direction:column; gap:3px; }
+    .blocked-summary span, .empty-state { color:var(--color-text-tertiary,#888); font-size:12px; }
+    .blocked-list { display:flex; flex-wrap:wrap; gap:8px; }
+    .blocked-chip { display:inline-flex; align-items:center; gap:8px; padding:6px 8px 6px 10px; border-radius:8px; background:rgba(239,68,68,.1); color:#fecaca; border:1px solid rgba(239,68,68,.24); font-size:12px; }
+    .blocked-chip button { width:20px; height:20px; border:none; border-radius:50%; background:rgba(239,68,68,.18); color:#fecaca; cursor:pointer; line-height:18px; }
+    .empty-state { padding:12px; border:1px dashed var(--color-border,#222); border-radius:8px; }
     .editor-wrap { position:relative; }
     .editor-overlay { position:absolute; inset:0; background:rgba(0,0,0,.5); display:flex; align-items:center; justify-content:center; font-size:14px; color:#888; z-index:2; }
     .json-editor { display:block; width:100%; box-sizing:border-box; background:#0d0d0d; color:#e2e8f0; font-family:'Fira Code','Cascadia Code','JetBrains Mono',Consolas,monospace; font-size:13px; line-height:1.6; border:none; outline:none; resize:vertical; padding:20px; margin:0; tab-size:2; }
@@ -116,7 +199,8 @@ import { ApiService } from '../../core/services/api.service';
     .save-msg { font-size:12px; font-weight:600; }
     .save-ok { color:#4ade80; }
     .save-err { color:#f87171; }
-    @media (max-width:768px) { .page { padding:12px; gap:16px; } .json-editor { font-size:12px; padding:14px; } }
+    @media (max-width:960px) { .coupon-block-grid { grid-template-columns:1fr; } }
+    @media (max-width:768px) { .page { padding:12px; gap:16px; } .json-editor { font-size:12px; padding:14px; } .blocked-summary { align-items:stretch; flex-direction:column; } }
   `]
 })
 export class ConfigComponent implements OnInit {
@@ -127,6 +211,7 @@ export class ConfigComponent implements OnInit {
   globalSaveMsg = '';
   globalSaveMsgType = 'ok';
   globalSource = '';
+  globalConfigData: any = {};
 
   restaurants: any[] = [];
   restosLoading = false;
@@ -139,6 +224,15 @@ export class ConfigComponent implements OnInit {
   restoSaveMsgType = 'ok';
   restoSource = '';
 
+  coupons: any[] = [];
+  couponsLoading = false;
+  selectedCouponBlockRestaurantId = '';
+  selectedCouponToBlock = '';
+  manualCouponCode = '';
+  couponBlockSaving = false;
+  couponBlockSaveMsg = '';
+  couponBlockSaveMsgType = 'ok';
+
   constructor(private api: ApiService) {}
 
   ngOnInit(): void { this.loadAll(); }
@@ -146,6 +240,7 @@ export class ConfigComponent implements OnInit {
   loadAll(): void {
     this.loadGlobal();
     this.loadRestaurants();
+    this.loadCoupons();
   }
 
   loadGlobal(): void {
@@ -153,6 +248,7 @@ export class ConfigComponent implements OnInit {
     this.api.getGlobalConfig().subscribe({
       next: (res: any) => {
         const cfg = res.config ?? res ?? {};
+        this.globalConfigData = cfg;
         this.globalSource = res.source ?? 'GLOBAL';
         this.globalJson = JSON.stringify(cfg, null, 2);
         this.globalParseError = '';
@@ -163,12 +259,12 @@ export class ConfigComponent implements OnInit {
   }
 
   validateGlobal(): void {
-    try { JSON.parse(this.globalJson); this.globalParseError = ''; }
+    try { this.globalConfigData = JSON.parse(this.globalJson); this.globalParseError = ''; }
     catch (e: any) { this.globalParseError = e.message; }
   }
 
   formatGlobal(): void {
-    try { this.globalJson = JSON.stringify(JSON.parse(this.globalJson), null, 2); this.globalParseError = ''; }
+    try { this.globalConfigData = JSON.parse(this.globalJson); this.globalJson = JSON.stringify(this.globalConfigData, null, 2); this.globalParseError = ''; }
     catch { }
   }
 
@@ -180,6 +276,7 @@ export class ConfigComponent implements OnInit {
     this.globalSaveMsg = '';
     this.api.saveGlobalConfig(payload).subscribe({
       next: () => {
+        this.globalConfigData = payload;
         this.globalSaving = false;
         this.globalSaveMsg = '&#10003; Global config saved';
         this.globalSaveMsgType = 'ok';
@@ -202,6 +299,87 @@ export class ConfigComponent implements OnInit {
         this.restosLoading = false;
       },
       error: () => { this.restosLoading = false; }
+    });
+  }
+
+  loadCoupons(): void {
+    this.couponsLoading = true;
+    this.api.listCoupons().subscribe({
+      next: (res: any) => {
+        this.coupons = res.coupons ?? (Array.isArray(res) ? res : []);
+        this.couponsLoading = false;
+      },
+      error: () => { this.couponsLoading = false; }
+    });
+  }
+
+  get selectedCouponBlockRestaurantName(): string {
+    const restaurant = this.restaurants.find(r => r.restaurantId === this.selectedCouponBlockRestaurantId);
+    return restaurant?.name || restaurant?.restaurantName || this.selectedCouponBlockRestaurantId;
+  }
+
+  get selectedRestaurantBlockedCoupons(): string[] {
+    if (!this.selectedCouponBlockRestaurantId) return [];
+    const cfg = this.currentGlobalConfig();
+    const blocks = this.normalizeBlockedCouponConfig(cfg?.blockedCouponsByRestaurant);
+    return blocks[this.selectedCouponBlockRestaurantId] || [];
+  }
+
+  get availableCouponCodes(): string[] {
+    const blocked = new Set(this.selectedRestaurantBlockedCoupons);
+    return Array.from(new Set(
+      this.coupons
+        .map(c => String(c.couponCode || '').trim().toUpperCase())
+        .filter(Boolean)
+    ))
+      .filter(code => !blocked.has(code))
+      .sort();
+  }
+
+  onCouponBlockRestaurantChange(): void {
+    this.selectedCouponToBlock = '';
+    this.manualCouponCode = '';
+    this.couponBlockSaveMsg = '';
+  }
+
+  addSelectedCouponBlock(): void {
+    this.addBlockedCoupon(this.selectedCouponToBlock);
+    this.selectedCouponToBlock = '';
+  }
+
+  addManualCouponBlock(): void {
+    this.addBlockedCoupon(this.manualCouponCode);
+    this.manualCouponCode = '';
+  }
+
+  removeBlockedCoupon(code: string): void {
+    if (!this.selectedCouponBlockRestaurantId) return;
+    const cfg = this.currentGlobalConfig();
+    const blocks = this.normalizeBlockedCouponConfig(cfg.blockedCouponsByRestaurant);
+    blocks[this.selectedCouponBlockRestaurantId] = (blocks[this.selectedCouponBlockRestaurantId] || [])
+      .filter(item => item !== String(code || '').trim().toUpperCase());
+    this.writeBlockedCouponConfig(cfg, blocks);
+  }
+
+  saveCouponBlocks(): void {
+    if (!this.selectedCouponBlockRestaurantId || this.globalParseError) return;
+    const cfg = this.currentGlobalConfig();
+    this.couponBlockSaving = true;
+    this.couponBlockSaveMsg = '';
+    this.api.saveGlobalConfig(cfg).subscribe({
+      next: () => {
+        this.globalConfigData = cfg;
+        this.couponBlockSaving = false;
+        this.couponBlockSaveMsg = '&#10003; Coupon blocks saved';
+        this.couponBlockSaveMsgType = 'ok';
+        setTimeout(() => this.couponBlockSaveMsg = '', 3000);
+      },
+      error: () => {
+        this.couponBlockSaving = false;
+        this.couponBlockSaveMsg = '&#10007; Save failed';
+        this.couponBlockSaveMsgType = 'err';
+        setTimeout(() => this.couponBlockSaveMsg = '', 4000);
+      }
     });
   }
 
@@ -255,5 +433,65 @@ export class ConfigComponent implements OnInit {
         setTimeout(() => this.restoSaveMsg = '', 4000);
       }
     });
+  }
+
+  private addBlockedCoupon(rawCode: string): void {
+    const code = String(rawCode || '').trim().toUpperCase();
+    if (!code || !this.selectedCouponBlockRestaurantId) return;
+
+    const cfg = this.currentGlobalConfig();
+    const blocks = this.normalizeBlockedCouponConfig(cfg.blockedCouponsByRestaurant);
+    const current = new Set(blocks[this.selectedCouponBlockRestaurantId] || []);
+    current.add(code);
+    blocks[this.selectedCouponBlockRestaurantId] = Array.from(current).sort();
+    this.writeBlockedCouponConfig(cfg, blocks);
+  }
+
+  private currentGlobalConfig(): any {
+    try {
+      const parsed = JSON.parse(this.globalJson || '{}');
+      return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+    } catch {
+      return this.globalConfigData && typeof this.globalConfigData === 'object' ? this.globalConfigData : {};
+    }
+  }
+
+  private normalizeBlockedCouponConfig(value: any): Record<string, string[]> {
+    const normalized: Record<string, string[]> = {};
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return normalized;
+
+    Object.entries(value).forEach(([restaurantId, rawCodes]) => {
+      const codes = this.normalizeCouponCodes(rawCodes);
+      if (codes.length) normalized[String(restaurantId).trim()] = codes;
+    });
+    return normalized;
+  }
+
+  private normalizeCouponCodes(value: any): string[] {
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      return this.normalizeCouponCodes(value.couponCodes ?? value.codes ?? value.blockedCoupons);
+    }
+
+    const rawCodes = Array.isArray(value)
+      ? value
+      : (typeof value === 'string' ? value.split(/[\n,]+/) : []);
+    return Array.from(new Set(
+      rawCodes
+        .map(code => String(code || '').trim().toUpperCase())
+        .filter(Boolean)
+    )).sort();
+  }
+
+  private writeBlockedCouponConfig(cfg: any, blocks: Record<string, string[]>): void {
+    Object.keys(blocks).forEach(key => {
+      if (!blocks[key]?.length) delete blocks[key];
+    });
+    if (Object.keys(blocks).length) cfg.blockedCouponsByRestaurant = blocks;
+    else delete cfg.blockedCouponsByRestaurant;
+
+    this.globalConfigData = cfg;
+    this.globalJson = JSON.stringify(cfg, null, 2);
+    this.globalParseError = '';
+    this.couponBlockSaveMsg = '';
   }
 }
