@@ -195,6 +195,11 @@ export class ApiService {
     return this.post<any>(`/api/v1/restaurants/${restaurantId}/earnings/settle`, body);
   }
 
+  // Manual ops adjustment ("Order Issues"): amount is signed (positive = credit, negative = debit).
+  postRestaurantEarningsAdjustment(restaurantId: string, body: { orderId: string, amount: number, comments: string }) {
+    return this.post<any>(`/api/v1/restaurants/${restaurantId}/earnings/adjustment`, body);
+  }
+
   settleRiderEarnings(riderId: string, body: { orderIds: string[], startDate: string, endDate: string, settlementId: string }) {
     return this.post<any>(`/api/v1/riders/${riderId}/earnings/settle`, body);
   }

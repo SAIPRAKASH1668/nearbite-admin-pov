@@ -22,6 +22,9 @@ import { catchError } from 'rxjs/operators';
       <div class="od-mobile-order-id font-mono">{{ orderId | slice:0:18 }}…</div>
       <span [class]="'od-status-chip status-' + order?.status" *ngIf="order">{{ order.status }}</span>
     </div>
+    <button class="od-reload-btn" *ngIf="order" (click)="openOrderIssues()" title="Order Issues">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+    </button>
     <button class="od-reload-btn" (click)="reload()" [disabled]="loading">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" [style.opacity]="loading?'0.4':'1'"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 .49-3"/></svg>
     </button>
@@ -39,6 +42,7 @@ import { catchError } from 'rxjs/operators';
     <div class="flex gap-sm items-center" *ngIf="order">
       <span [class]="'status-' + order.status" style="font-size:13px">{{ order.status }}</span>
       <span class="text-secondary" style="font-size:12px">{{ formatDateTime(order.createdAt) }}</span>
+      <button class="btn btn-secondary btn-sm" (click)="openOrderIssues()">Order Issues</button>
       <button class="btn btn-secondary btn-sm" (click)="reload()" [disabled]="loading">↻</button>
     </div>
   </div>
@@ -433,6 +437,54 @@ import { catchError } from 'rxjs/operators';
     <h4>Order not found</h4>
     <button class="btn btn-primary" (click)="goBack()">Go Back</button>
   </div>
+
+  <!-- ── Order Issues modal ── -->
+  <div class="oi-modal-overlay" *ngIf="showOrderIssuesModal" (click)="closeOrderIssues()">
+    <div class="oi-modal-sheet" (click)="$event.stopPropagation()">
+      <div class="oi-modal-header">
+        <div>
+          <div class="oi-modal-title">Order Issues</div>
+          <div class="oi-modal-sub">{{ order?.restaurantName || order?.restaurantId }} · adjust earnings</div>
+        </div>
+        <button class="oi-modal-close" (click)="closeOrderIssues()">&#x2715;</button>
+      </div>
+
+      <div class="oi-modal-body">
+        <div class="form-group">
+          <label>Type</label>
+          <div class="oi-toggle">
+            <button type="button" class="oi-toggle-btn" [class.oi-credit]="issueForm.direction==='credit'"
+                    (click)="issueForm.direction='credit'">Credit (+)</button>
+            <button type="button" class="oi-toggle-btn" [class.oi-debit]="issueForm.direction==='debit'"
+                    (click)="issueForm.direction='debit'">Debit (−)</button>
+          </div>
+          <div class="oi-hint">Credit increases the restaurant's earnings; Debit reduces them.</div>
+        </div>
+
+        <div class="form-group">
+          <label>Amount (₹)</label>
+          <input class="form-input" type="number" min="0" step="0.01" inputmode="decimal"
+                 [(ngModel)]="issueForm.amount" placeholder="0.00" />
+        </div>
+
+        <div class="form-group">
+          <label>Comments</label>
+          <textarea class="form-input" rows="3" [(ngModel)]="issueForm.comments"
+                    placeholder="Reason for this adjustment (required)"></textarea>
+        </div>
+
+        <div *ngIf="issueError" class="oi-error">{{ issueError }}</div>
+        <div *ngIf="issueSuccess" class="oi-success">Adjustment posted.</div>
+      </div>
+
+      <div class="oi-modal-footer">
+        <button class="btn btn-secondary" style="flex:1" (click)="closeOrderIssues()">Cancel</button>
+        <button class="btn btn-primary" style="flex:2" (click)="submitOrderIssue()" [disabled]="submittingIssue">
+          {{ submittingIssue ? 'Posting…' : 'Post adjustment' }}
+        </button>
+      </div>
+    </div>
+  </div>
 </div>
   `,
   styles: [`
@@ -714,6 +766,36 @@ import { catchError } from 'rxjs/operators';
       .od-hs-val { font-size: 14px; }
       .od-rev-strip { gap: 8px; padding: 0 12px; }
     }
+
+    /* ── Order Issues modal ── */
+    .oi-modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,.7);
+      z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 16px;
+    }
+    .oi-modal-sheet {
+      background: var(--color-surface, #181818); border: 1px solid var(--color-border, #2a2a2a);
+      border-radius: 16px; width: 100%; max-width: 440px; max-height: 92vh;
+      display: flex; flex-direction: column; overflow: hidden;
+    }
+    .oi-modal-header {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      padding: 16px 20px; border-bottom: 1px solid var(--color-border, #222);
+    }
+    .oi-modal-title { font-size: 16px; font-weight: 700; }
+    .oi-modal-sub { font-size: 12px; color: var(--color-text-secondary, #999); margin-top: 2px; }
+    .oi-modal-close { background: none; border: none; color: var(--color-text-secondary, #999); font-size: 18px; cursor: pointer; line-height: 1; }
+    .oi-modal-body { padding: 16px 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; }
+    .oi-modal-footer { display: flex; gap: 10px; padding: 14px 20px; border-top: 1px solid var(--color-border, #222); }
+    .oi-toggle { display: flex; gap: 8px; }
+    .oi-toggle-btn {
+      flex: 1; padding: 9px 0; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px;
+      background: var(--color-surface-2, #222); border: 1px solid var(--color-border, #333); color: var(--color-text-secondary, #aaa);
+    }
+    .oi-toggle-btn.oi-credit { background: rgba(34,197,94,.15); border-color: var(--color-success, #22c55e); color: var(--color-success, #22c55e); }
+    .oi-toggle-btn.oi-debit { background: rgba(232,53,42,.15); border-color: var(--color-error, #e8352a); color: var(--color-error, #e8352a); }
+    .oi-hint { font-size: 11px; color: var(--color-text-tertiary, #888); margin-top: 6px; }
+    .oi-error { color: var(--color-error, #e8352a); font-size: 13px; }
+    .oi-success { color: var(--color-success, #22c55e); font-size: 13px; }
   `]
 })
 export class OrderDetailComponent implements OnInit {
@@ -725,6 +807,14 @@ export class OrderDetailComponent implements OnInit {
   assigning = false;
   assignError = '';
   assignSuccess = '';
+
+  // Order Issues → manual restaurant-earnings adjustment
+  showOrderIssuesModal = false;
+  issueForm: { direction: 'credit' | 'debit'; amount: number | null; comments: string } =
+    { direction: 'credit', amount: null, comments: '' };
+  submittingIssue = false;
+  issueError = '';
+  issueSuccess = false;
 
   private readonly FORCE_ASSIGN_STATUSES = [
     'CONFIRMED', 'ACCEPTED', 'PREPARING', 'READY_FOR_PICKUP',
@@ -830,6 +920,47 @@ export class OrderDetailComponent implements OnInit {
   formatDateTime(iso: string): string {
     if (!iso) return '—';
     return iso.slice(0, 16).replace('T', ' ');
+  }
+
+  openOrderIssues(): void {
+    this.issueForm = { direction: 'credit', amount: null, comments: '' };
+    this.issueError = '';
+    this.issueSuccess = false;
+    this.submittingIssue = false;
+    this.showOrderIssuesModal = true;
+  }
+
+  closeOrderIssues(): void {
+    this.showOrderIssuesModal = false;
+  }
+
+  submitOrderIssue(): void {
+    if (this.submittingIssue) return;
+    const amount = Number(this.issueForm.amount);
+    const comments = (this.issueForm.comments || '').trim();
+    if (!amount || amount <= 0) { this.issueError = 'Enter an amount greater than 0.'; return; }
+    if (!comments) { this.issueError = 'Comments are required.'; return; }
+    if (!this.order?.restaurantId) { this.issueError = 'Missing restaurant for this order.'; return; }
+
+    // Credit adds to earnings, Debit reduces them.
+    const signed = this.issueForm.direction === 'debit' ? -amount : amount;
+    this.submittingIssue = true;
+    this.issueError = '';
+    this.api.postRestaurantEarningsAdjustment(this.order.restaurantId, {
+      orderId: this.orderId,
+      amount: signed,
+      comments,
+    }).subscribe({
+      next: () => {
+        this.submittingIssue = false;
+        this.issueSuccess = true;
+        setTimeout(() => this.closeOrderIssues(), 900);
+      },
+      error: (e: any) => {
+        this.submittingIssue = false;
+        this.issueError = e?.error?.message || e?.error?.error || 'Failed to post adjustment.';
+      },
+    });
   }
 
   goBack(): void {
