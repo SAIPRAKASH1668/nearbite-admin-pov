@@ -1,11 +1,11 @@
 /**
  * GST Revenue — downloads platform GST revenue for a date range as .xlsx.
  *
- * For each DELIVERED order, emits THREE rows (all at Rate 18%). Invoice Value is
- * the order grandTotal (same on all 3 rows); the per-row Taxable Value is:
- *   1. Taxable Value = revenue.platformRevenue.finalPayout - revenue.platformRevenue.platformFee  (commission)
- *   2. Taxable Value = calculatedFeeResponse.deliveryFee                                           (delivery)
- *   3. Taxable Value = revenue.platformRevenue.platformFee                                         (platform fee)
+ * For each DELIVERED order, emits TWO rows (all at Rate 18%) on a single sheet.
+ * Invoice Value is the order grandTotal (same on both rows); the per-row
+ * Taxable Value is:
+ *   1. Taxable Value = calculatedFeeResponse.deliveryFee                                           (delivery)
+ *   2. Taxable Value = revenue.platformRevenue.platformFee                                         (platform fee)
  * Columns: Invoice Number (orderId), Restaurant Name, Invoice Date (DD-MMM-YYYY),
  * Invoice Value (grandTotal), Place Of Supply, Reverse Charge, Applicable % of Tax Rate,
  * Invoice Type, E-Commerce GSTIN, Rate, Taxable Value, Cess Amount.
@@ -54,7 +54,7 @@ function firstOfThisMonth(): string {
           </button>
         </div>
       </div>
-      <p class="hint">GSTR-1 B2B layout. 3 rows per delivered order @ 18% — Invoice Value = order grand total; Taxable Value = (1) platform commission [finalPayout − platformFee], (2) delivery fee, (3) platform fee. Place of Supply 37-Andhra Pradesh, Reverse Charge N, Invoice Type Regular B2B, Cess 0.</p>
+      <p class="hint">GSTR-1 B2B layout. 2 rows per delivered order @ 18% — Invoice Value = order grand total; Taxable Value = (1) delivery fee, (2) platform fee. Place of Supply 37-Andhra Pradesh, Reverse Charge N, Invoice Type Regular B2B, Cess 0.</p>
     </div>
   </div>
 
@@ -65,7 +65,7 @@ function firstOfThisMonth(): string {
   </div>
 
   <div class="card" *ngIf="!loading && orderCount !== null && orderCount > 0" style="padding:20px;text-align:center;color:var(--color-success,#22c55e)">
-    ✓ Exported {{ orderCount }} order(s) → {{ orderCount * 3 }} rows.
+    ✓ Exported {{ orderCount }} order(s) → {{ orderCount * 2 }} rows.
   </div>
 </div>
   `,
@@ -122,21 +122,17 @@ export class GstRevenueComponent {
           const rName = o?.restaurantName || '';
           const invDate = this.formatGstDate(o?.createdAt);
           const invoiceValue = this.round2(this.num(o?.grandTotal));
-          const commission = this.num(pr.finalPayout) - this.num(pr.platformFee);
-          const deliveryFee = this.num(cfr.deliveryFee);
-          const platformFee = this.num(pr.platformFee);
-          for (const taxable of [commission, deliveryFee, platformFee]) {
-            rows.push([
-              invNo, rName, invDate, invoiceValue,
-              this.PLACE_OF_SUPPLY, this.REVERSE_CHARGE, this.RATE, this.INVOICE_TYPE,
-              this.ECOMMERCE_GSTIN, this.RATE, this.round2(taxable), this.CESS_AMOUNT,
-            ]);
-          }
+          const buildRow = (taxable: number) => [
+            invNo, rName, invDate, invoiceValue,
+            this.PLACE_OF_SUPPLY, this.REVERSE_CHARGE, this.RATE, this.INVOICE_TYPE,
+            this.ECOMMERCE_GSTIN, this.RATE, this.round2(taxable), this.CESS_AMOUNT,
+          ];
+          rows.push(buildRow(this.num(cfr.deliveryFee)));
+          rows.push(buildRow(this.num(pr.platformFee)));
         }
 
-        const ws = XLSX.utils.aoa_to_sheet(rows);
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, 'gst-revenue');
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), 'gst-revenue');
         XLSX.writeFile(wb, `gst-revenue-${this.startDate}-to-${this.endDate}.xlsx`);
         this.loading = false;
       },
