@@ -2,15 +2,18 @@
  * GST Export — downloads DELIVERED orders for a date range as a GSTR-1 .xlsx.
  *
  * One row per delivered order, 6 columns:
- *   GSTIN/UIN of Recipient (blank — no GSTIN stored) · Invoice Number (orderId) ·
+ *   GSTIN/UIN of Recipient (the restaurant's `gst` number) · Invoice Number (orderId) ·
  *   Restaurant Name · Invoice date (DD-MMM-YYYY) · Invoice Value (foodTotal only) · Rate (5%).
  *
- * Frontend-only: reads delivered orders via the existing date-range API and
- * builds the workbook client-side with SheetJS.
+ * Reads delivered orders via the date-range API, then fetches each unique
+ * restaurant to resolve its `gst` number (not present on the order); builds the
+ * workbook client-side with SheetJS.
  */
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { forkJoin, of } from 'rxjs';
+import { catchError, map } from 'rxjs/operators';
 import { ApiService } from '../../core/services/api.service';
 import * as XLSX from 'xlsx';
 
@@ -104,27 +107,56 @@ export class GstInvoiceExportComponent {
           return;
         }
 
-        const header = ['GSTIN/UIN of Recipient', 'Invoice Number', 'Restaurant Name', 'Invoice date', 'Invoice Value', 'Rate'];
-        const rows = orders.map((o: any) => [
-          '',                                                   // GSTIN/UIN of Recipient — not stored (B2C)
-          o.orderId || '',
-          o.restaurantName || '',                              // Restaurant Name (blank if not stored on the order)
-          this.formatGstDate(o.createdAt),
-          Math.round((Number(o.foodTotal) || 0) * 100) / 100,  // Invoice Value = food value only
-          this.GST_RATE_FOOD,
-        ]);
+        // Column 1 is the restaurant's GST number (restaurant entry `gst` field),
+        // which isn't on the order — fetch each unique restaurant and map id → gst.
+        const restaurantIds: string[] = Array.from(
+          new Set(orders.map((o: any) => o?.restaurantId).filter(Boolean))
+        );
+        if (!restaurantIds.length) {
+          this.buildAndDownload(orders, {});
+          return;
+        }
 
-        const ws = XLSX.utils.aoa_to_sheet([header, ...rows]);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, 'b2b');
-        XLSX.writeFile(wb, `gst-delivered-${this.startDate}-to-${this.endDate}.xlsx`);
-        this.loading = false;
+        forkJoin(
+          restaurantIds.map((id) =>
+            this.api.getRestaurant(id).pipe(
+              map((r: any) => ({ id, gst: r?.gst || '' })),
+              catchError(() => of({ id, gst: '' })),
+            ),
+          ),
+        ).subscribe({
+          next: (results) => {
+            const gstByRestaurant: Record<string, string> = {};
+            for (const { id, gst } of results) gstByRestaurant[id] = gst;
+            this.buildAndDownload(orders, gstByRestaurant);
+          },
+          // If restaurant lookups fail wholesale, still emit the sheet (blank GSTINs).
+          error: () => this.buildAndDownload(orders, {}),
+        });
       },
       error: (e) => {
         this.loading = false;
         this.error = e?.error?.message || 'Failed to fetch delivered orders.';
       },
     });
+  }
+
+  private buildAndDownload(orders: any[], gstByRestaurant: Record<string, string>): void {
+    const header = ['GSTIN/UIN of Recipient', 'Invoice Number', 'Restaurant Name', 'Invoice date', 'Invoice Value', 'Rate'];
+    const rows = orders.map((o: any) => [
+      gstByRestaurant[o.restaurantId] || '',               // GSTIN/UIN — the restaurant's gst number
+      o.orderId || '',
+      o.restaurantName || '',                              // Restaurant Name (blank if not stored on the order)
+      this.formatGstDate(o.createdAt),
+      Math.round((Number(o.foodTotal) || 0) * 100) / 100,  // Invoice Value = food value only
+      this.GST_RATE_FOOD,
+    ]);
+
+    const ws = XLSX.utils.aoa_to_sheet([header, ...rows]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'b2b');
+    XLSX.writeFile(wb, `gst-delivered-${this.startDate}-to-${this.endDate}.xlsx`);
+    this.loading = false;
   }
 
   /** ISO timestamp → "DD-MMM-YYYY" using the stored (IST) calendar date, no TZ math. */
