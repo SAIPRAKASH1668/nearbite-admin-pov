@@ -5,18 +5,29 @@ import { ApiService } from '../../core/services/api.service';
 
 type CouponMode = 'checkout' | 'item';
 type CouponType = 'fixed' | 'percentage';
-type CouponTarget = 'delivery' | 'order';
+type CouponTarget = 'delivery' | 'order' | 'item';
+type ItemOfferScope = 'single' | 'bulk';
+type BulkItemCouponType = 'price_match' | 'fixed' | 'percentage';
+
+interface MenuItemGroup {
+  category: string;
+  items: any[];
+}
 
 interface CouponForm {
   mode: CouponMode;
+  itemOfferScope: ItemOfferScope;
   couponCode: string;
   couponType: CouponType;
   couponValue: number | null;
+  bulkCouponType: BulkItemCouponType;
+  bulkCouponValue: number | null;
   issuedBy: '' | 'YUMDUDE' | 'RESTAURANT';
   couponTarget: CouponTarget;
   minOrderValue: number | null;
   couponRestaurant: string;
   itemId: string;
+  itemIds: string[];
   itemBannerText: string;
   startDate: string;
   endDate: string;
@@ -39,7 +50,8 @@ interface CouponForm {
     </div>
     <div class="flex gap-sm">
       <button class="btn btn-secondary btn-sm" (click)="load()">&#8635; Refresh</button>
-      <button class="btn btn-primary" (click)="openCreate()">{{ showForm ? 'Cancel' : '+ New Coupon' }}</button>
+      <button class="btn btn-secondary" *ngIf="!showForm" (click)="openCreate('item')">+ New Item Offer</button>
+      <button class="btn btn-primary" (click)="showForm ? cancelForm() : openCreate('checkout')">{{ showForm ? 'Cancel' : '+ New Checkout Coupon' }}</button>
     </div>
   </div>
 
@@ -54,16 +66,16 @@ interface CouponForm {
     <div class="card-body">
       <div class="mode-tabs">
         <button type="button" [class.active]="form.mode === 'checkout'" (click)="setMode('checkout')">Checkout coupon</button>
-        <button type="button" [class.active]="form.mode === 'item'" (click)="setMode('item')">Item offer</button>
+        <button type="button" [class.active]="form.mode === 'item'" (click)="setMode('item')">Item offer - select items</button>
       </div>
 
       <div class="form-grid">
-        <div class="form-group">
+        <div class="form-group" *ngIf="form.mode !== 'item' || form.itemOfferScope === 'single'">
           <label>Coupon Code *</label>
           <input class="form-input" [(ngModel)]="form.couponCode" [disabled]="editMode" placeholder="SAVE20" style="text-transform:uppercase" />
         </div>
 
-        <div class="form-group">
+        <div class="form-group" *ngIf="form.mode !== 'item' || form.itemOfferScope === 'single'">
           <label>Discount Type *</label>
           <select class="form-select" [(ngModel)]="form.couponType">
             <option value="fixed">Fixed amount</option>
@@ -71,7 +83,7 @@ interface CouponForm {
           </select>
         </div>
 
-        <div class="form-group">
+        <div class="form-group" *ngIf="form.mode !== 'item' || form.itemOfferScope === 'single'">
           <label>{{ form.couponType === 'fixed' ? 'Discount Amount (Rs) *' : 'Discount Percent *' }}</label>
           <input class="form-input" type="number" min="0" [(ngModel)]="form.couponValue" [placeholder]="form.couponType === 'fixed' ? '50' : '20'" />
         </div>
@@ -126,20 +138,88 @@ interface CouponForm {
         </ng-container>
 
         <ng-container *ngIf="form.mode === 'item'">
+          <div class="form-group full-col" *ngIf="!editMode">
+            <label>Apply Offer To</label>
+            <div class="sub-mode-tabs">
+              <button type="button" [class.active]="form.itemOfferScope === 'single'" (click)="setItemOfferScope('single')">Pick specific items</button>
+              <button type="button" [class.active]="form.itemOfferScope === 'bulk'" (click)="setItemOfferScope('bulk')">All eligible items</button>
+            </div>
+          </div>
+
+          <ng-container *ngIf="form.itemOfferScope === 'single'">
+          <div class="form-group full-col">
+            <div class="item-picker-head">
+              <label>Select Multiple Menu Items *</label>
+              <div class="flex gap-sm">
+                <button type="button" class="btn btn-secondary btn-xs" (click)="selectAllMenuItems()" [disabled]="!menuItems.length">Select all</button>
+                <button type="button" class="btn btn-ghost btn-xs" (click)="clearSelectedItems()" [disabled]="!form.itemIds.length">Clear</button>
+              </div>
+            </div>
+            <div class="item-picker" [class.disabled]="!form.couponRestaurant || menuLoading">
+              <div class="muted" *ngIf="!form.couponRestaurant">Select a restaurant first</div>
+              <div class="muted" *ngIf="form.couponRestaurant && menuLoading">Loading menu...</div>
+              <div class="item-category" *ngFor="let group of groupedMenuItems()">
+                <div class="item-category-head">
+                  <div>
+                    <strong>{{ group.category }}</strong>
+                    <span>{{ selectedCountInGroup(group) }}/{{ group.items.length }} selected</span>
+                  </div>
+                  <div class="flex gap-sm">
+                    <button type="button" class="btn btn-secondary btn-xs" (click)="selectCategoryItems(group)" [disabled]="!group.items.length">Select</button>
+                    <button type="button" class="btn btn-ghost btn-xs" (click)="clearCategoryItems(group)" [disabled]="!selectedCountInGroup(group)">Clear</button>
+                  </div>
+                </div>
+                <div class="item-category-grid">
+                  <label class="item-option" *ngFor="let item of group.items">
+                    <input type="checkbox" [checked]="isItemSelected(item)" (change)="toggleItem(item)" [disabled]="menuLoading" />
+                    <span>
+                      <span>{{ item.name || item.itemName || item.itemId }}</span>
+                      <small *ngIf="item.subCategory">{{ item.subCategory }}</small>
+                    </span>
+                    <span class="font-mono">Rs {{ displayPrice(item) }}</span>
+                    <span class="muted" *ngIf="item.itemOfferCouponCode">coupon {{ item.itemOfferCouponCode }}</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+            <small>{{ form.itemIds.length }} selected</small>
+          </div>
+          </ng-container>
+
+          <ng-container *ngIf="form.itemOfferScope === 'bulk'">
           <div class="form-group">
-            <label>Menu Item *</label>
-            <select class="form-select" [(ngModel)]="form.itemId" [disabled]="!form.couponRestaurant || menuLoading">
-              <option value="">{{ menuLoading ? 'Loading menu...' : 'Select item' }}</option>
-              <option *ngFor="let item of menuItems" [value]="item.itemId || item.id">
-                {{ item.name || item.itemName || item.itemId }} - Rs {{ item.price || item.restaurantPrice || 0 }}
-              </option>
+            <label>Bulk Offer Type *</label>
+            <select class="form-select" [(ngModel)]="form.bulkCouponType" (ngModelChange)="onBulkCouponTypeChange()">
+              <option value="price_match">Match dine-in price</option>
+              <option value="fixed">Fixed amount</option>
+              <option value="percentage">Percentage</option>
             </select>
           </div>
+
+          <div class="form-group" *ngIf="form.bulkCouponType !== 'price_match'">
+            <label>{{ form.bulkCouponType === 'fixed' ? 'Discount Amount (Rs) *' : 'Discount Percent *' }}</label>
+            <input class="form-input" type="number" min="0" [(ngModel)]="form.bulkCouponValue" [placeholder]="form.bulkCouponType === 'fixed' ? '30' : '10'" />
+          </div>
+          </ng-container>
 
           <div class="form-group">
             <label>Item Banner Text</label>
             <input class="form-input" maxlength="20" [(ngModel)]="form.itemBannerText" placeholder="20% OFF" />
             <small>{{ (form.itemBannerText || '').length }}/20 characters</small>
+          </div>
+
+          <div class="item-preview full-col" *ngIf="form.couponRestaurant">
+            <div>
+              <strong>{{ form.itemOfferScope === 'bulk' ? (menuItems.length || 0) : form.itemIds.length }}</strong>
+              <span>{{ form.itemOfferScope === 'bulk' ? 'menu items loaded for bulk offer' : 'selected menu items' }}</span>
+            </div>
+            <div *ngIf="selectedMenuItems()[0] as item">
+              <span>{{ item.itemName || item.name || item.itemId }}</span>
+              <span class="font-mono">Rs {{ displayPrice(item) }}</span>
+              <span class="muted" *ngIf="form.itemIds.length > 1">+{{ form.itemIds.length - 1 }} more</span>
+              <span class="muted" *ngIf="item.originalPrice">was Rs {{ item.originalPrice }}</span>
+              <span class="muted" *ngIf="item.itemOfferCouponCode">coupon {{ item.itemOfferCouponCode }}</span>
+            </div>
           </div>
         </ng-container>
 
@@ -160,13 +240,24 @@ interface CouponForm {
       </div>
 
       <div class="rule-note" *ngIf="form.mode === 'item'">
-        Item offers are attached to the selected menu item. Target customer lists are not supported for item coupons.
+        {{ form.itemOfferScope === 'bulk'
+          ? 'Bulk item offers generate one coupon per eligible menu item and attach each coupon to that item.'
+          : 'Item offers are attached to the selected menu item. Target customer lists are not supported for item coupons.' }}
+      </div>
+
+      <div class="rule-note success-note" *ngIf="bulkResult">
+        Created {{ bulkResult.createdCount || 0 }} item offer{{ (bulkResult.createdCount || 0) === 1 ? '' : 's' }}
+        <span *ngIf="bulkResult.skippedCount">, skipped {{ bulkResult.skippedCount }}</span>.
+      </div>
+
+      <div class="rule-note error-note" *ngIf="saveError">
+        {{ saveError }}
       </div>
 
       <div class="form-actions">
         <button class="btn btn-secondary" (click)="cancelForm()">Cancel</button>
         <button class="btn btn-primary" (click)="save()" [disabled]="creating || !canSave">
-          {{ creating ? 'Saving...' : (editMode ? 'Update Coupon' : 'Create Coupon') }}
+          {{ creating ? 'Saving...' : saveButtonLabel }}
         </button>
       </div>
     </div>
@@ -287,7 +378,7 @@ interface CouponForm {
     .card-header span, .muted, small { color:var(--color-text-tertiary); font-size:12px; }
     .card-body { padding:16px; }
     .mode-tabs { display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap; }
-    .mode-tabs button {
+    .mode-tabs button, .sub-mode-tabs button {
       border:1px solid var(--color-border);
       background:var(--color-bg-secondary);
       color:var(--color-text-secondary);
@@ -296,10 +387,72 @@ interface CouponForm {
       font-weight:700;
       cursor:pointer;
     }
-    .mode-tabs button.active { background:var(--color-primary); border-color:var(--color-primary); color:#07140b; }
+    .mode-tabs button.active, .sub-mode-tabs button.active { background:var(--color-primary); border-color:var(--color-primary); color:#07140b; }
+    .sub-mode-tabs { display:flex; gap:8px; flex-wrap:wrap; }
     .form-grid { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:12px; }
     .full-col { grid-column:1/-1; }
     textarea.form-input { min-height:74px; resize:vertical; }
+    .item-picker-head { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+    .item-picker {
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      max-height:260px;
+      overflow:auto;
+      padding:10px;
+      border:1px solid var(--color-border);
+      border-radius:8px;
+      background:var(--color-bg-secondary);
+    }
+    .item-picker.disabled { opacity:.7; }
+    .item-category {
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      padding:10px;
+      border:1px solid var(--color-border);
+      border-radius:8px;
+      background:var(--color-bg-card);
+    }
+    .item-category-head { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+    .item-category-head div:first-child { display:flex; flex-direction:column; gap:3px; min-width:0; }
+    .item-category-head strong { color:var(--color-text-primary); font-size:13px; }
+    .item-category-head span { color:var(--color-text-tertiary); font-size:11px; }
+    .item-category-grid {
+      display:grid;
+      grid-template-columns:repeat(2, minmax(0, 1fr));
+      gap:8px;
+    }
+    .item-option {
+      display:grid;
+      grid-template-columns:auto minmax(0, 1fr) auto auto;
+      align-items:center;
+      gap:8px;
+      min-height:36px;
+      padding:7px 8px;
+      border:1px solid var(--color-border);
+      border-radius:8px;
+      background:var(--color-bg-secondary);
+      font-size:12px;
+      cursor:pointer;
+    }
+    .item-option span { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .item-option span span { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .item-option small { display:block; color:var(--color-text-tertiary); font-size:10px; margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .item-option input { margin:0; }
+    .item-preview {
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      padding:10px 12px;
+      border:1px solid var(--color-border);
+      border-radius:8px;
+      background:var(--color-bg-secondary);
+      font-size:12px;
+    }
+    .item-preview div { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+    .item-preview strong { font-size:16px; color:var(--color-text-primary); }
     .rule-note {
       margin-top:12px;
       padding:10px 12px;
@@ -309,9 +462,12 @@ interface CouponForm {
       border-radius:8px;
       font-size:12px;
     }
+    .success-note { border-color:rgba(34,197,94,.35); color:var(--color-success); }
+    .error-note { border-color:rgba(239,68,68,.35); color:var(--color-error); }
     .form-actions { display:flex; gap:10px; justify-content:flex-end; margin-top:16px; }
     @media (max-width:900px) {
       .form-grid { grid-template-columns: 1fr 1fr; }
+      .item-category-grid { grid-template-columns:1fr; }
     }
     @media (max-width:768px) {
       .page { padding: 12px; }
@@ -331,15 +487,29 @@ export class CouponsComponent implements OnInit {
   showForm = false;
   editMode = false;
   creating = false;
+  bulkResult: any = null;
+  saveError = '';
   form: CouponForm = this.blank();
 
   get activeCount(): number { return this.coupons.filter(c => this.isActive(c)).length; }
-  get checkoutCount(): number { return this.coupons.filter(c => !c.couponItem).length; }
-  get itemCount(): number { return this.coupons.filter(c => !!c.couponItem).length; }
+  get checkoutCount(): number { return this.coupons.filter(c => !this.itemIdsFromCoupon(c).length).length; }
+  get itemCount(): number { return this.coupons.filter(c => !!this.itemIdsFromCoupon(c).length).length; }
+  get saveButtonLabel(): string {
+    if (this.form.mode === 'item' && this.form.itemOfferScope === 'bulk') return 'Apply Bulk Item Offers';
+    return this.editMode ? 'Update Coupon' : 'Create Coupon';
+  }
   get canSave(): boolean {
-    if (!this.form.couponCode.trim() || !this.form.couponValue || this.form.couponValue <= 0) return false;
     if (this.form.issuedBy === 'RESTAURANT' && !this.form.couponRestaurant) return false;
-    if (this.form.mode === 'item') return !!this.form.couponRestaurant && !!this.form.itemId;
+    if (this.form.mode === 'item' && this.form.itemOfferScope === 'bulk') {
+      if (!this.form.couponRestaurant) return false;
+      if (this.form.bulkCouponType === 'price_match') return true;
+      if (!this.form.bulkCouponValue || this.form.bulkCouponValue <= 0) return false;
+      if (this.form.bulkCouponType === 'percentage' && this.form.bulkCouponValue > 100) return false;
+      return true;
+    }
+    if (!this.form.couponCode.trim() || !this.form.couponValue || this.form.couponValue <= 0) return false;
+    if (this.form.couponType === 'percentage' && this.form.couponValue > 100) return false;
+    if (this.form.mode === 'item') return !!this.form.couponRestaurant && this.form.itemIds.length > 0;
     return true;
   }
 
@@ -353,14 +523,18 @@ export class CouponsComponent implements OnInit {
   blank(): CouponForm {
     return {
       mode: 'checkout',
+      itemOfferScope: 'single',
       couponCode: '',
       couponType: 'fixed',
       couponValue: null,
+      bulkCouponType: 'price_match',
+      bulkCouponValue: null,
       issuedBy: 'YUMDUDE',
       couponTarget: 'delivery',
       minOrderValue: null,
       couponRestaurant: '',
       itemId: '',
+      itemIds: [],
       itemBannerText: '',
       startDate: '',
       endDate: '',
@@ -391,21 +565,44 @@ export class CouponsComponent implements OnInit {
 
   setMode(mode: CouponMode): void {
     this.form.mode = mode;
+    this.bulkResult = null;
+    this.saveError = '';
     if (mode === 'item') {
-      this.form.couponTarget = 'order';
+      this.form.couponTarget = 'item';
       this.form.targetCustomerPhones = '';
       this.form.isOncePerDay = false;
       this.form.isOncePerUser = false;
       if (this.form.couponRestaurant) this.loadMenu(this.form.couponRestaurant);
     } else {
+      if (this.form.couponTarget === 'item') this.form.couponTarget = 'delivery';
+      this.form.itemOfferScope = 'single';
       this.form.itemId = '';
+      this.form.itemIds = [];
       this.form.itemBannerText = '';
       this.menuItems = [];
     }
   }
 
+  setItemOfferScope(scope: ItemOfferScope): void {
+    this.form.itemOfferScope = scope;
+    this.bulkResult = null;
+    this.saveError = '';
+    if (scope === 'bulk') {
+      this.form.couponCode = '';
+      this.form.itemId = '';
+      this.form.itemIds = [];
+      this.form.couponValue = null;
+    }
+    if (this.form.couponRestaurant) this.loadMenu(this.form.couponRestaurant);
+  }
+
+  onBulkCouponTypeChange(): void {
+    if (this.form.bulkCouponType === 'price_match') this.form.bulkCouponValue = null;
+  }
+
   onRestaurantChange(): void {
     this.form.itemId = '';
+    this.form.itemIds = [];
     this.menuItems = [];
     if (this.form.mode === 'item' && this.form.couponRestaurant) {
       this.loadMenu(this.form.couponRestaurant);
@@ -414,34 +611,52 @@ export class CouponsComponent implements OnInit {
 
   loadMenu(restaurantId: string): void {
     this.menuLoading = true;
-    this.api.getMenu(restaurantId).subscribe({
+    this.api.getMenu(restaurantId, 'all').subscribe({
       next: (res: any) => {
         this.menuItems = res.menuItems || res.items || [];
+        const item = this.selectedMenuItems()[0];
+        if (item && !this.form.itemBannerText && item.itemOfferCouponCode === this.form.couponCode) {
+          this.form.itemBannerText = item.topOfferBanner || '';
+        }
         this.menuLoading = false;
       },
       error: () => { this.menuLoading = false; }
     });
   }
 
-  openCreate(): void {
+  openCreate(mode: CouponMode = 'checkout'): void {
     this.editMode = false;
     this.form = this.blank();
+    this.form.mode = mode;
+    if (mode === 'item') {
+      this.form.couponTarget = 'item';
+      this.form.targetCustomerPhones = '';
+      this.form.isOncePerDay = false;
+      this.form.isOncePerUser = false;
+    }
+    this.bulkResult = null;
+    this.saveError = '';
     this.showForm = true;
   }
 
   editCoupon(c: any): void {
-    const mode: CouponMode = c.couponItem ? 'item' : 'checkout';
+    const itemIds = this.itemIdsFromCoupon(c);
+    const mode: CouponMode = itemIds.length ? 'item' : 'checkout';
     this.editMode = true;
     this.form = {
       mode,
+      itemOfferScope: 'single',
       couponCode: c.couponCode,
       couponType: this.normalizeType(c.couponType),
       couponValue: Number(c.couponValue || 0),
+      bulkCouponType: 'price_match',
+      bulkCouponValue: null,
       minOrderValue: c.minOrderValue ?? null,
       couponTarget: (c.couponTarget || 'delivery') === 'order' ? 'order' : 'delivery',
       issuedBy: c.issuedBy || 'YUMDUDE',
       couponRestaurant: c.couponRestaurant || '',
-      itemId: c.couponItem || '',
+      itemId: itemIds[0] || '',
+      itemIds,
       itemBannerText: '',
       startDate: c.startDate || '',
       endDate: c.endDate || '',
@@ -459,12 +674,33 @@ export class CouponsComponent implements OnInit {
     this.showForm = false;
     this.editMode = false;
     this.menuItems = [];
+    this.bulkResult = null;
+    this.saveError = '';
     this.form = this.blank();
   }
 
   save(): void {
     if (!this.canSave) return;
     this.creating = true;
+    this.saveError = '';
+    this.bulkResult = null;
+
+    if (this.form.mode === 'item' && this.form.itemOfferScope === 'bulk') {
+      this.api.createBulkItemCoupons(this.form.couponRestaurant, this.buildBulkPayload()).subscribe({
+        next: (res: any) => {
+          this.creating = false;
+          this.bulkResult = res;
+          this.load();
+          this.loadMenu(this.form.couponRestaurant);
+        },
+        error: (err: any) => {
+          this.creating = false;
+          this.saveError = this.errorMessage(err);
+        }
+      });
+      return;
+    }
+
     const payload = this.buildPayload();
     this.api.createCoupon(payload).subscribe({
       next: () => {
@@ -472,7 +708,10 @@ export class CouponsComponent implements OnInit {
         this.cancelForm();
         this.load();
       },
-      error: () => { this.creating = false; }
+      error: (err: any) => {
+        this.creating = false;
+        this.saveError = this.errorMessage(err);
+      }
     });
   }
 
@@ -491,7 +730,7 @@ export class CouponsComponent implements OnInit {
   }
 
   couponMode(c: any): string {
-    if (c.couponItem) return 'Item offer';
+    if (this.itemIdsFromCoupon(c).length) return 'Item offer';
     if (this.targetCount(c)) return 'Targeted checkout';
     if (c.couponRestaurant) return 'Restaurant checkout';
     return 'Global checkout';
@@ -504,14 +743,18 @@ export class CouponsComponent implements OnInit {
   }
 
   scopeLabel(c: any): string {
-    if (c.couponItem) return `${this.restaurantName(c.couponRestaurant)} / ${c.couponItem}`;
+    const itemIds = this.itemIdsFromCoupon(c);
+    if (itemIds.length === 1) return `${this.restaurantName(c.couponRestaurant)} / ${itemIds[0]}`;
+    if (itemIds.length > 1) return `${this.restaurantName(c.couponRestaurant)} / ${itemIds.length} items`;
     if (c.couponRestaurant) return this.restaurantName(c.couponRestaurant);
     return 'All restaurants';
   }
 
   ruleLabel(c: any): string {
     const rules = [];
-    if (!c.couponItem) rules.push((c.couponTarget || 'delivery') === 'order' ? 'Order value' : 'Delivery fee');
+    const itemIds = this.itemIdsFromCoupon(c);
+    if (itemIds.length) rules.push(itemIds.length === 1 ? 'Item price' : `${itemIds.length} item prices`);
+    if (!itemIds.length) rules.push((c.couponTarget || 'delivery') === 'order' ? 'Order value' : 'Delivery fee');
     if (c.minOrderValue) rules.push(`Min Rs ${c.minOrderValue}`);
     if (c.isOncePerUser) rules.push('Once/user');
     if (c.isOncePerDay) rules.push('Once/day');
@@ -534,7 +777,9 @@ export class CouponsComponent implements OnInit {
     this.assignIf(payload, 'couponRestaurant', this.form.couponRestaurant);
 
     if (this.form.mode === 'item') {
-      payload.itemId = this.form.itemId;
+      payload.itemIds = this.form.itemIds;
+      if (this.form.itemIds.length === 1) payload.itemId = this.form.itemIds[0];
+      payload.couponTarget = 'item';
       this.assignIf(payload, 'itemBannerText', this.form.itemBannerText);
       return payload;
     }
@@ -545,6 +790,21 @@ export class CouponsComponent implements OnInit {
     }
     const phones = this.parsePhones(this.form.targetCustomerPhones);
     if (phones.length) payload.targetCustomerPhones = phones;
+    return payload;
+  }
+
+  private buildBulkPayload(): any {
+    const payload: any = {
+      couponType: this.form.bulkCouponType,
+      issuedBy: this.form.issuedBy || 'YUMDUDE',
+    };
+    if (this.form.bulkCouponType !== 'price_match') {
+      payload.couponValue = Number(this.form.bulkCouponValue || 0);
+    }
+    this.assignIf(payload, 'itemBannerText', this.form.itemBannerText);
+    this.assignIf(payload, 'startDate', this.form.startDate);
+    this.assignIf(payload, 'endDate', this.form.endDate);
+    this.assignIf(payload, 'description', this.form.description);
     return payload;
   }
 
@@ -568,6 +828,113 @@ export class CouponsComponent implements OnInit {
 
   targetCount(c: any): number {
     return Number(c.targetCustomerCount || c.targetCustomerPhones?.length || 0);
+  }
+
+  itemIdOf(item: any): string {
+    return String(item?.itemId || item?.id || '').trim();
+  }
+
+  isItemSelected(item: any): boolean {
+    const itemId = this.itemIdOf(item);
+    return !!itemId && this.form.itemIds.includes(itemId);
+  }
+
+  toggleItem(item: any): void {
+    const itemId = this.itemIdOf(item);
+    if (!itemId) return;
+    const selected = new Set(this.form.itemIds);
+    if (selected.has(itemId)) selected.delete(itemId);
+    else selected.add(itemId);
+    this.form.itemIds = Array.from(selected);
+    this.form.itemId = this.form.itemIds[0] || '';
+  }
+
+  selectAllMenuItems(): void {
+    this.form.itemIds = this.menuItems
+      .map(item => this.itemIdOf(item))
+      .filter(Boolean);
+    this.form.itemId = this.form.itemIds[0] || '';
+  }
+
+  clearSelectedItems(): void {
+    this.form.itemIds = [];
+    this.form.itemId = '';
+  }
+
+  selectedMenuItems(): any[] {
+    const selected = new Set(this.form.itemIds);
+    return this.menuItems.filter(item => selected.has(this.itemIdOf(item)));
+  }
+
+  groupedMenuItems(): MenuItemGroup[] {
+    const groups = new Map<string, any[]>();
+    this.menuItems.forEach(item => {
+      const category = this.categoryLabel(item);
+      const items = groups.get(category) || [];
+      items.push(item);
+      groups.set(category, items);
+    });
+
+    return Array.from(groups.entries())
+      .map(([category, items]) => ({
+        category,
+        items: items.slice().sort((a, b) => this.itemName(a).localeCompare(this.itemName(b))),
+      }))
+      .sort((a, b) => {
+        if (a.category === 'Uncategorized') return 1;
+        if (b.category === 'Uncategorized') return -1;
+        return a.category.localeCompare(b.category);
+      });
+  }
+
+  selectedCountInGroup(group: MenuItemGroup): number {
+    const selected = new Set(this.form.itemIds);
+    return group.items.filter(item => selected.has(this.itemIdOf(item))).length;
+  }
+
+  selectCategoryItems(group: MenuItemGroup): void {
+    const selected = new Set(this.form.itemIds);
+    group.items.forEach(item => {
+      const itemId = this.itemIdOf(item);
+      if (itemId) selected.add(itemId);
+    });
+    this.form.itemIds = Array.from(selected);
+    this.form.itemId = this.form.itemIds[0] || '';
+  }
+
+  clearCategoryItems(group: MenuItemGroup): void {
+    const categoryIds = new Set(group.items.map(item => this.itemIdOf(item)).filter(Boolean));
+    this.form.itemIds = this.form.itemIds.filter(itemId => !categoryIds.has(itemId));
+    this.form.itemId = this.form.itemIds[0] || '';
+  }
+
+  itemIdsFromCoupon(c: any): string[] {
+    const rawItems = [
+      c?.couponItem,
+      ...(Array.isArray(c?.couponItems) ? c.couponItems : []),
+    ];
+    return Array.from(new Set(
+      rawItems
+        .map(itemId => String(itemId || '').trim())
+        .filter(Boolean)
+    ));
+  }
+
+  private categoryLabel(item: any): string {
+    return String(item?.category || 'Uncategorized').trim() || 'Uncategorized';
+  }
+
+  private itemName(item: any): string {
+    return String(item?.name || item?.itemName || item?.itemId || '').trim();
+  }
+
+  displayPrice(item: any): string {
+    const value = Number(item.price ?? item.restaurantPrice ?? 0);
+    return Number.isFinite(value) ? value.toFixed(value % 1 === 0 ? 0 : 1) : '0';
+  }
+
+  private errorMessage(err: any): string {
+    return err?.error?.error || err?.error?.message || err?.message || 'Save failed';
   }
 
   private normalizeType(type: any): CouponType {

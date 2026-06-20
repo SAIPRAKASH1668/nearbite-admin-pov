@@ -280,11 +280,15 @@ export class ApiService {
 
   // ─── Coupons ──────────────────────────────────────────────────────────────
   listCoupons() {
-    return this.get<any>('/api/v1/coupons/available');
+    return this.get<any>('/api/v1/coupons');
   }
 
   createCoupon(data: any) {
     return this.post<any>('/api/v1/coupons', data);
+  }
+
+  createBulkItemCoupons(restaurantId: string, data: any) {
+    return this.post<any>(`/api/v1/restaurants/${restaurantId}/menu/dine-in-coupons`, data);
   }
 
   deleteCoupon(couponCode: string) {

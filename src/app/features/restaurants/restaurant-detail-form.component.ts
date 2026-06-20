@@ -105,10 +105,11 @@ import { ImageUploaderComponent } from '../../shared/components/image-uploader/i
               <input class="form-input" placeholder="Label (e.g. Lunch)" [(ngModel)]="s.label" />
               <input class="form-input" type="time" [(ngModel)]="s.start" style="max-width:130px" />
               <input class="form-input" type="time" [(ngModel)]="s.end" style="max-width:130px" />
+              <input class="form-input" placeholder="Days (blank = all)" [(ngModel)]="s.days" style="max-width:170px" />
               <button class="btn btn-xs btn-ghost" (click)="form.shiftTimings.splice(i,1)">✕</button>
             </div>
           </div>
-          <button class="btn btn-xs btn-secondary" (click)="form.shiftTimings.push({ label:'', start:'', end:'' })">＋ Add shift</button>
+          <button class="btn btn-xs btn-secondary" (click)="form.shiftTimings.push({ label:'', start:'', end:'', days:'' })">＋ Add shift</button>
         </div>
 
         <!-- Images -->
@@ -212,7 +213,7 @@ export class RestaurantDetailFormComponent implements OnChanges {
       topOfferBanner: r.topOfferBanner || '',
       timezone: r.timezone || 'Asia/Kolkata',
       theaterMode: r.theaterMode ?? null,
-      shiftTimings: Array.isArray(r.shiftTimings) ? r.shiftTimings.map((s: any) => ({ ...s })) : [],
+      shiftTimings: this.flattenShiftTimings(r.shiftTimings),
       restaurantImage: img,
       locationId: r.locationId || '',
       ownerId: r.ownerId || '',
@@ -231,9 +232,7 @@ export class RestaurantDetailFormComponent implements OnChanges {
   private buildPayload(): any {
     const f = this.form;
     const cuisine = this.cuisineText ? this.cuisineText.split(',').map(s => s.trim()).filter(Boolean) : [];
-    const shiftTimings = (f.shiftTimings || [])
-      .filter((s: any) => s.label && s.start && s.end)
-      .map((s: any) => ({ label: s.label, start: s.start, end: s.end }));
+    const shiftTimings = this.buildShiftTimings(f.shiftTimings || []);
     const payload: any = {
       name: (f.name || '').trim(),
       isOpen: f.isOpen !== false,
@@ -273,5 +272,62 @@ export class RestaurantDetailFormComponent implements OnChanges {
       },
       error: () => { this.saving = false; this.error = 'Save failed. Please try again.'; },
     });
+  }
+
+  private flattenShiftTimings(value: any): any[] {
+    if (!Array.isArray(value)) return [];
+    const rows: any[] = [];
+    value.forEach((schedule: any) => {
+      const days = Array.isArray(schedule?.days) ? schedule.days.join(',') : '';
+      if (Array.isArray(schedule?.shifts)) {
+        schedule.shifts.forEach((shift: any) => {
+          rows.push({
+            label: shift?.label || '',
+            start: shift?.start || '',
+            end: shift?.end || '',
+            days,
+          });
+        });
+      } else if (schedule?.label || schedule?.start || schedule?.end) {
+        rows.push({
+          label: schedule.label || '',
+          start: schedule.start || '',
+          end: schedule.end || '',
+          days,
+        });
+      }
+    });
+    return rows;
+  }
+
+  private buildShiftTimings(rows: any[]): any[] {
+    const groups = new Map<string, { days: string[]; shifts: any[] }>();
+    (rows || [])
+      .filter((s: any) => s.label && s.start && s.end)
+      .forEach((s: any) => {
+        const days = this.normalizeDays(s.days);
+        const key = days.join(',');
+        const group = groups.get(key) || { days, shifts: [] };
+        group.shifts.push({
+          label: String(s.label || '').trim(),
+          start: s.start,
+          end: s.end,
+        });
+        groups.set(key, group);
+      });
+    return Array.from(groups.values()).map(group => ({
+      ...(group.days.length ? { days: group.days } : {}),
+      shifts: group.shifts,
+    }));
+  }
+
+  private normalizeDays(value: any): string[] {
+    const valid = new Set(['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN']);
+    return Array.from(new Set(String(value || '')
+      .split(/[,\s]+/)
+      .map(d => d.trim().toUpperCase())
+      .filter(d => d && !['ALL', 'DAILY', 'EVERYDAY'].includes(d))
+      .map(d => d.slice(0, 3))
+      .filter(d => valid.has(d))));
   }
 }
