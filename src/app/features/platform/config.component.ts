@@ -106,6 +106,12 @@ import { ApiService } from '../../core/services/api.service';
           <div class="form-group"><label>Min order amount (₹)</label><input class="form-input" type="number" min="0" [(ngModel)]="cod.minAmount" placeholder="0" /></div>
           <div class="form-group"><label>Max order amount (₹)</label><input class="form-input" type="number" min="0" [(ngModel)]="cod.maxAmount" placeholder="2000" /></div>
         </div>
+        <div class="yc-card">
+          <div class="yc-card-title">COD hours (IST)</div>
+          <div class="form-group"><label>Available from</label><input class="form-input" type="time" [(ngModel)]="cod.availableFrom" /></div>
+          <div class="form-group"><label>Available to</label><input class="form-input" type="time" [(ngModel)]="cod.availableTo" /></div>
+          <div class="yc-hint">COD is offered only inside this window. Leave both blank for 24×7. To disable COD 9 PM–6 AM, set 06:00 → 21:00.</div>
+        </div>
       </div>
     </div>
     <div class="section-footer">
@@ -274,6 +280,7 @@ import { ApiService } from '../../core/services/api.service';
     .yc-card { border:1px solid var(--color-border,#222); border-radius:10px; padding:14px; display:flex; flex-direction:column; gap:10px; background:var(--color-bg-secondary,#161616); }
     .yc-card-title { font-size:13px; font-weight:700; color:#fff; }
     .yc-check { display:flex; align-items:center; gap:8px; font-size:12px; font-weight:700; color:var(--color-text-secondary,#cbd5e1); }
+    .yc-hint { font-size:11px; color:var(--color-text-tertiary,#888); line-height:1.5; }
     @media (max-width:960px) { .coupon-block-grid { grid-template-columns:1fr; } .yumcoins-grid { grid-template-columns:1fr; } }
     @media (max-width:768px) { .page { padding:12px; gap:16px; } .json-editor { font-size:12px; padding:14px; } .blocked-summary { align-items:stretch; flex-direction:column; } }
   `]
@@ -335,7 +342,7 @@ export class ConfigComponent implements OnInit {
   }
 
   blankCod(): any {
-    return { disableCod: false, minAmount: null, maxAmount: null };
+    return { disableCod: false, minAmount: null, maxAmount: null, availableFrom: '', availableTo: '' };
   }
 
   loadCod(): void {
@@ -358,6 +365,8 @@ export class ConfigComponent implements OnInit {
         disableCod: !!this.cod.disableCod,
         minAmount: num(this.cod.minAmount),
         maxAmount: num(this.cod.maxAmount),
+        availableFrom: this.cod.availableFrom || '',
+        availableTo: this.cod.availableTo || '',
       },
     };
     this.codSaving = true;
