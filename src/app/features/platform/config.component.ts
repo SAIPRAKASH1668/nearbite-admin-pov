@@ -91,6 +91,34 @@ import { ApiService } from '../../core/services/api.service';
     </div>
   </div>
 
+  <!-- COD Config -->
+  <div class="config-section">
+    <div class="section-header">
+      <div class="section-title">Cash on Delivery (COD) Config</div>
+      <span *ngIf="codSource" class="source-badge">source: {{ codSource }}</span>
+    </div>
+    <div class="yumcoins-body">
+      <div *ngIf="codLoading" class="empty-state">Loading&hellip;</div>
+      <div class="yumcoins-grid" *ngIf="!codLoading">
+        <div class="yc-card">
+          <div class="yc-card-title">Availability</div>
+          <label class="yc-check"><input type="checkbox" [(ngModel)]="cod.disableCod" /> Disable COD globally</label>
+          <div class="form-group"><label>Min order amount (₹)</label><input class="form-input" type="number" min="0" [(ngModel)]="cod.minAmount" placeholder="0" /></div>
+          <div class="form-group"><label>Max order amount (₹)</label><input class="form-input" type="number" min="0" [(ngModel)]="cod.maxAmount" placeholder="2000" /></div>
+        </div>
+      </div>
+    </div>
+    <div class="section-footer">
+      <span *ngIf="codSaveMsg" [class]="'save-msg save-' + codSaveMsgType">{{ codSaveMsg }}</span>
+      <div class="footer-actions">
+        <button class="btn btn-secondary btn-sm" (click)="loadCod()" [disabled]="codLoading || codSaving">Reset</button>
+        <button class="btn btn-primary" (click)="saveCod()" [disabled]="codSaving || codLoading">
+          {{ codSaving ? 'Saving&hellip;' : 'Save COD Config' }}
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Coupon Blocks -->
   <div class="config-section">
     <div class="section-header">
@@ -287,6 +315,13 @@ export class ConfigComponent implements OnInit {
   yumcoinsSaveMsgType = 'ok';
   yumcoinsSource = '';
 
+  cod: any = this.blankCod();
+  codLoading = false;
+  codSaving = false;
+  codSaveMsg = '';
+  codSaveMsgType = 'ok';
+  codSource = '';
+
   constructor(private api: ApiService) {}
 
   ngOnInit(): void { this.loadAll(); }
@@ -296,6 +331,52 @@ export class ConfigComponent implements OnInit {
     this.loadRestaurants();
     this.loadCoupons();
     this.loadYumcoins();
+    this.loadCod();
+  }
+
+  blankCod(): any {
+    return { disableCod: false, minAmount: null, maxAmount: null };
+  }
+
+  loadCod(): void {
+    this.codLoading = true;
+    this.codSaveMsg = '';
+    this.api.getCodConfig().subscribe({
+      next: (res: any) => {
+        this.cod = { ...this.blankCod(), ...(res?.codConfig || {}) };
+        this.codSource = res?.source || '';
+        this.codLoading = false;
+      },
+      error: () => { this.codLoading = false; }
+    });
+  }
+
+  saveCod(): void {
+    const num = (v: any) => (v === null || v === undefined || v === '' ? 0 : Number(v));
+    const payload = {
+      codConfig: {
+        disableCod: !!this.cod.disableCod,
+        minAmount: num(this.cod.minAmount),
+        maxAmount: num(this.cod.maxAmount),
+      },
+    };
+    this.codSaving = true;
+    this.codSaveMsg = '';
+    this.api.saveCodConfig(payload).subscribe({
+      next: () => {
+        this.codSaving = false;
+        this.codSource = 'COD';
+        this.codSaveMsg = '✓ COD config saved';
+        this.codSaveMsgType = 'ok';
+        setTimeout(() => this.codSaveMsg = '', 3000);
+      },
+      error: () => {
+        this.codSaving = false;
+        this.codSaveMsg = '✗ Save failed';
+        this.codSaveMsgType = 'err';
+        setTimeout(() => this.codSaveMsg = '', 4000);
+      }
+    });
   }
 
   blankYumcoins(): any {
