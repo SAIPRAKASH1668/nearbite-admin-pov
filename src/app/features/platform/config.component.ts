@@ -125,6 +125,34 @@ import { ApiService } from '../../core/services/api.service';
     </div>
   </div>
 
+  <!-- Coupon Usage Config -->
+  <div class="config-section">
+    <div class="section-header">
+      <div class="section-title">Coupon Usage</div>
+    </div>
+    <div class="yumcoins-body">
+      <div *ngIf="couponCfgLoading" class="empty-state">Loading&hellip;</div>
+      <div class="yumcoins-grid" *ngIf="!couponCfgLoading">
+        <div class="yc-card">
+          <div class="yc-card-title">Availability</div>
+          <label class="yc-check"><input type="checkbox" [(ngModel)]="couponCfg.enabled" /> Allow customers to use coupons</label>
+          <div class="form-group"><label>Available from</label><input class="form-input" type="time" [(ngModel)]="couponCfg.availableFrom" [disabled]="!couponCfg.enabled" /></div>
+          <div class="form-group"><label>Available to</label><input class="form-input" type="time" [(ngModel)]="couponCfg.availableTo" [disabled]="!couponCfg.enabled" /></div>
+          <div class="yc-hint">Uncheck to disable all checkout coupons platform-wide. Set a window (IST) to allow coupons only during those hours; leave both blank for 24×7. Item-level menu offers are not affected.</div>
+        </div>
+      </div>
+    </div>
+    <div class="section-footer">
+      <span *ngIf="couponCfgSaveMsg" [class]="'save-msg save-' + couponCfgSaveMsgType">{{ couponCfgSaveMsg }}</span>
+      <div class="footer-actions">
+        <button class="btn btn-secondary btn-sm" (click)="loadCouponConfig()" [disabled]="couponCfgLoading || couponCfgSaving">Reset</button>
+        <button class="btn btn-primary" (click)="saveCouponConfig()" [disabled]="couponCfgSaving || couponCfgLoading">
+          {{ couponCfgSaving ? 'Saving&hellip;' : 'Save Coupon Usage' }}
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Coupon Blocks -->
   <div class="config-section">
     <div class="section-header">
@@ -329,6 +357,12 @@ export class ConfigComponent implements OnInit {
   codSaveMsgType = 'ok';
   codSource = '';
 
+  couponCfg: any = this.blankCouponConfig();
+  couponCfgLoading = false;
+  couponCfgSaving = false;
+  couponCfgSaveMsg = '';
+  couponCfgSaveMsgType = 'ok';
+
   constructor(private api: ApiService) {}
 
   ngOnInit(): void { this.loadAll(); }
@@ -339,6 +373,49 @@ export class ConfigComponent implements OnInit {
     this.loadCoupons();
     this.loadYumcoins();
     this.loadCod();
+    this.loadCouponConfig();
+  }
+
+  blankCouponConfig(): any {
+    return { enabled: true, availableFrom: '', availableTo: '' };
+  }
+
+  loadCouponConfig(): void {
+    this.couponCfgLoading = true;
+    this.couponCfgSaveMsg = '';
+    this.api.getCouponConfig().subscribe({
+      next: (res: any) => {
+        this.couponCfg = { ...this.blankCouponConfig(), ...(res?.couponConfig || {}) };
+        this.couponCfgLoading = false;
+      },
+      error: () => { this.couponCfgLoading = false; }
+    });
+  }
+
+  saveCouponConfig(): void {
+    const payload = {
+      couponConfig: {
+        enabled: !!this.couponCfg.enabled,
+        availableFrom: this.couponCfg.availableFrom || '',
+        availableTo: this.couponCfg.availableTo || '',
+      },
+    };
+    this.couponCfgSaving = true;
+    this.couponCfgSaveMsg = '';
+    this.api.saveCouponConfig(payload).subscribe({
+      next: () => {
+        this.couponCfgSaving = false;
+        this.couponCfgSaveMsg = '✓ Coupon usage saved';
+        this.couponCfgSaveMsgType = 'ok';
+        setTimeout(() => this.couponCfgSaveMsg = '', 3000);
+      },
+      error: () => {
+        this.couponCfgSaving = false;
+        this.couponCfgSaveMsg = '✗ Save failed';
+        this.couponCfgSaveMsgType = 'err';
+        setTimeout(() => this.couponCfgSaveMsg = '', 4000);
+      }
+    });
   }
 
   blankCod(): any {

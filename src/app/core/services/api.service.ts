@@ -322,6 +322,14 @@ export class ApiService {
     return this.post<any>('/api/v1/cod-config', data);
   }
 
+  getCouponConfig() {
+    return this.get<any>('/api/v1/coupon-config');
+  }
+
+  saveCouponConfig(data: any) {
+    return this.post<any>('/api/v1/coupon-config', data);
+  }
+
   getHeroBanners() {
     return this.get<any>('/api/v1/config/home-hero-banner', { admin: true });
   }
