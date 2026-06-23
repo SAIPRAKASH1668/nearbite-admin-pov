@@ -306,6 +306,14 @@ export class ApiService {
     return this.post<any>('/api/v1/globalconfig', data);
   }
 
+  getYumcoinsConfig() {
+    return this.get<any>('/api/v1/yumcoins-config');
+  }
+
+  saveYumcoinsConfig(data: any) {
+    return this.post<any>('/api/v1/yumcoins-config', data);
+  }
+
   getHeroBanners() {
     return this.get<any>('/api/v1/config/home-hero-banner', { admin: true });
   }

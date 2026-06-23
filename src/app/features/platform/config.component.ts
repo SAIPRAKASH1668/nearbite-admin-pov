@@ -49,6 +49,48 @@ import { ApiService } from '../../core/services/api.service';
     </div>
   </div>
 
+  <!-- YumCoins Config -->
+  <div class="config-section">
+    <div class="section-header">
+      <div class="section-title">YumCoins Config</div>
+      <span *ngIf="yumcoinsSource" class="source-badge">source: {{ yumcoinsSource }}</span>
+    </div>
+    <div class="yumcoins-body">
+      <div *ngIf="yumcoinsLoading" class="empty-state">Loading&hellip;</div>
+      <div class="yumcoins-grid" *ngIf="!yumcoinsLoading">
+        <div class="yc-card">
+          <div class="yc-card-title">Redemption</div>
+          <label class="yc-check"><input type="checkbox" [(ngModel)]="yumcoins.walletConfig.redemptionEnabled" /> Redemption enabled</label>
+          <div class="form-group"><label>₹ per YumCoin</label><input class="form-input" type="number" min="0" [(ngModel)]="yumcoins.walletConfig.yumConversionRate" placeholder="1" /></div>
+          <div class="form-group"><label>Max coins per order</label><input class="form-input" type="number" min="0" [(ngModel)]="yumcoins.walletConfig.maxCoinsPerOrder" placeholder="500" /></div>
+          <div class="form-group"><label>Max redemptions / day</label><input class="form-input" type="number" min="0" [(ngModel)]="yumcoins.walletConfig.maxRedemptionsPerDay" placeholder="3" /></div>
+          <div class="form-group"><label>Min order value to redeem (₹)</label><input class="form-input" type="number" min="0" [(ngModel)]="yumcoins.walletConfig.minOrderValueToRedeem" placeholder="150" /></div>
+        </div>
+        <div class="yc-card">
+          <div class="yc-card-title">Referral</div>
+          <label class="yc-check"><input type="checkbox" [(ngModel)]="yumcoins.referralConfig.enabled" /> Referral enabled</label>
+          <div class="form-group"><label>Referrer reward (coins)</label><input class="form-input" type="number" min="0" [(ngModel)]="yumcoins.referralConfig.referrerReward" placeholder="100" /></div>
+          <div class="form-group"><label>Referee reward (coins)</label><input class="form-input" type="number" min="0" [(ngModel)]="yumcoins.referralConfig.refereeReward" placeholder="50" /></div>
+        </div>
+        <div class="yc-card">
+          <div class="yc-card-title">Order cashback</div>
+          <label class="yc-check"><input type="checkbox" [(ngModel)]="yumcoins.orderCashbackConfig.enabled" /> Cashback enabled</label>
+          <div class="form-group"><label>Cashback %</label><input class="form-input" type="number" min="0" [(ngModel)]="yumcoins.orderCashbackConfig.percentage" placeholder="1.5" /></div>
+          <div class="form-group"><label>Max coins per order</label><input class="form-input" type="number" min="0" [(ngModel)]="yumcoins.orderCashbackConfig.maxCoinsPerOrder" placeholder="100" /></div>
+        </div>
+      </div>
+    </div>
+    <div class="section-footer">
+      <span *ngIf="yumcoinsSaveMsg" [class]="'save-msg save-' + yumcoinsSaveMsgType">{{ yumcoinsSaveMsg }}</span>
+      <div class="footer-actions">
+        <button class="btn btn-secondary btn-sm" (click)="loadYumcoins()" [disabled]="yumcoinsLoading || yumcoinsSaving">Reset</button>
+        <button class="btn btn-primary" (click)="saveYumcoins()" [disabled]="yumcoinsSaving || yumcoinsLoading">
+          {{ yumcoinsSaving ? 'Saving&hellip;' : 'Save YumCoins Config' }}
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Coupon Blocks -->
   <div class="config-section">
     <div class="section-header">
@@ -199,7 +241,12 @@ import { ApiService } from '../../core/services/api.service';
     .save-msg { font-size:12px; font-weight:600; }
     .save-ok { color:#4ade80; }
     .save-err { color:#f87171; }
-    @media (max-width:960px) { .coupon-block-grid { grid-template-columns:1fr; } }
+    .yumcoins-body { padding:16px 20px; }
+    .yumcoins-grid { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:16px; }
+    .yc-card { border:1px solid var(--color-border,#222); border-radius:10px; padding:14px; display:flex; flex-direction:column; gap:10px; background:var(--color-bg-secondary,#161616); }
+    .yc-card-title { font-size:13px; font-weight:700; color:#fff; }
+    .yc-check { display:flex; align-items:center; gap:8px; font-size:12px; font-weight:700; color:var(--color-text-secondary,#cbd5e1); }
+    @media (max-width:960px) { .coupon-block-grid { grid-template-columns:1fr; } .yumcoins-grid { grid-template-columns:1fr; } }
     @media (max-width:768px) { .page { padding:12px; gap:16px; } .json-editor { font-size:12px; padding:14px; } .blocked-summary { align-items:stretch; flex-direction:column; } }
   `]
 })
@@ -233,6 +280,13 @@ export class ConfigComponent implements OnInit {
   couponBlockSaveMsg = '';
   couponBlockSaveMsgType = 'ok';
 
+  yumcoins: any = this.blankYumcoins();
+  yumcoinsLoading = false;
+  yumcoinsSaving = false;
+  yumcoinsSaveMsg = '';
+  yumcoinsSaveMsgType = 'ok';
+  yumcoinsSource = '';
+
   constructor(private api: ApiService) {}
 
   ngOnInit(): void { this.loadAll(); }
@@ -241,6 +295,79 @@ export class ConfigComponent implements OnInit {
     this.loadGlobal();
     this.loadRestaurants();
     this.loadCoupons();
+    this.loadYumcoins();
+  }
+
+  blankYumcoins(): any {
+    return {
+      walletConfig: {
+        yumConversionRate: null,
+        redemptionEnabled: false,
+        maxCoinsPerOrder: null,
+        maxRedemptionsPerDay: null,
+        minOrderValueToRedeem: null,
+      },
+      referralConfig: { enabled: false, referrerReward: null, refereeReward: null },
+      orderCashbackConfig: { enabled: false, percentage: null, maxCoinsPerOrder: null },
+    };
+  }
+
+  loadYumcoins(): void {
+    this.yumcoinsLoading = true;
+    this.yumcoinsSaveMsg = '';
+    this.api.getYumcoinsConfig().subscribe({
+      next: (res: any) => {
+        const base = this.blankYumcoins();
+        this.yumcoins = {
+          walletConfig: { ...base.walletConfig, ...(res?.walletConfig || {}) },
+          referralConfig: { ...base.referralConfig, ...(res?.referralConfig || {}) },
+          orderCashbackConfig: { ...base.orderCashbackConfig, ...(res?.orderCashbackConfig || {}) },
+        };
+        this.yumcoinsSource = res?.source || '';
+        this.yumcoinsLoading = false;
+      },
+      error: () => { this.yumcoinsLoading = false; }
+    });
+  }
+
+  saveYumcoins(): void {
+    const num = (v: any) => (v === null || v === undefined || v === '' ? 0 : Number(v));
+    const payload = {
+      walletConfig: {
+        yumConversionRate: num(this.yumcoins.walletConfig.yumConversionRate),
+        redemptionEnabled: !!this.yumcoins.walletConfig.redemptionEnabled,
+        maxCoinsPerOrder: num(this.yumcoins.walletConfig.maxCoinsPerOrder),
+        maxRedemptionsPerDay: num(this.yumcoins.walletConfig.maxRedemptionsPerDay),
+        minOrderValueToRedeem: num(this.yumcoins.walletConfig.minOrderValueToRedeem),
+      },
+      referralConfig: {
+        enabled: !!this.yumcoins.referralConfig.enabled,
+        referrerReward: num(this.yumcoins.referralConfig.referrerReward),
+        refereeReward: num(this.yumcoins.referralConfig.refereeReward),
+      },
+      orderCashbackConfig: {
+        enabled: !!this.yumcoins.orderCashbackConfig.enabled,
+        percentage: num(this.yumcoins.orderCashbackConfig.percentage),
+        maxCoinsPerOrder: num(this.yumcoins.orderCashbackConfig.maxCoinsPerOrder),
+      },
+    };
+    this.yumcoinsSaving = true;
+    this.yumcoinsSaveMsg = '';
+    this.api.saveYumcoinsConfig(payload).subscribe({
+      next: () => {
+        this.yumcoinsSaving = false;
+        this.yumcoinsSource = 'YUMCOINS';
+        this.yumcoinsSaveMsg = '✓ YumCoins config saved';
+        this.yumcoinsSaveMsgType = 'ok';
+        setTimeout(() => this.yumcoinsSaveMsg = '', 3000);
+      },
+      error: () => {
+        this.yumcoinsSaving = false;
+        this.yumcoinsSaveMsg = '✗ Save failed';
+        this.yumcoinsSaveMsgType = 'err';
+        setTimeout(() => this.yumcoinsSaveMsg = '', 4000);
+      }
+    });
   }
 
   loadGlobal(): void {
