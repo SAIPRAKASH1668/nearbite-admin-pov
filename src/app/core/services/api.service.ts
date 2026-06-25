@@ -330,6 +330,14 @@ export class ApiService {
     return this.post<any>('/api/v1/coupon-config', data);
   }
 
+  getRiderConfig() {
+    return this.get<any>('/api/v1/rider-config');
+  }
+
+  saveRiderConfig(data: any) {
+    return this.post<any>('/api/v1/rider-config', data);
+  }
+
   getHeroBanners() {
     return this.get<any>('/api/v1/config/home-hero-banner', { admin: true });
   }
@@ -411,5 +419,9 @@ export class ApiService {
 
   releaseRiderSlot(slotId: string, releaseAt?: string) {
     return this.post<any>(`/api/v1/ops/rider-slots/${slotId}/release`, releaseAt ? { releaseAt } : {});
+  }
+
+  updateRiderSlotSettings(settings: Record<string, number>) {
+    return this.post<any>('/api/v1/ops/rider-slots/settings', { settings });
   }
 }

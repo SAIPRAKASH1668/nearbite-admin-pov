@@ -153,6 +153,39 @@ import { ApiService } from '../../core/services/api.service';
     </div>
   </div>
 
+  <!-- Rider Config -->
+  <div class="config-section">
+    <div class="section-header">
+      <div class="section-title">Rider Config</div>
+      <span *ngIf="riderSource" class="source-badge">source: {{ riderSource }}</span>
+    </div>
+    <div class="editor-wrap">
+      <div *ngIf="riderLoading" class="editor-overlay">Loading&hellip;</div>
+      <textarea
+        class="json-editor"
+        [(ngModel)]="riderJson"
+        spellcheck="false"
+        autocomplete="off"
+        autocorrect="off"
+        autocapitalize="off"
+        rows="16"
+        [class.json-error]="riderParseError"
+        (ngModelChange)="validateRider()"
+      ></textarea>
+      <div *ngIf="riderParseError" class="parse-error">{{ riderParseError }}</div>
+    </div>
+    <div class="section-footer">
+      <span *ngIf="riderSaveMsg" [class]="'save-msg save-' + riderSaveMsgType">{{ riderSaveMsg }}</span>
+      <div class="footer-actions">
+        <button class="btn btn-secondary btn-sm" (click)="formatRider()">Format JSON</button>
+        <button class="btn btn-primary" (click)="saveRider()" [disabled]="riderSaving || !!riderParseError">
+          {{ riderSaving ? 'Saving&hellip;' : 'Save Rider Config' }}
+        </button>
+      </div>
+    </div>
+    <div class="rider-hint">riderSlots, riderBonusConfig, riderSlotsSettings. Stored in CONFIG#RIDER.</div>
+  </div>
+
   <!-- Coupon Blocks -->
   <div class="config-section">
     <div class="section-header">
@@ -309,6 +342,7 @@ import { ApiService } from '../../core/services/api.service';
     .yc-card-title { font-size:13px; font-weight:700; color:#fff; }
     .yc-check { display:flex; align-items:center; gap:8px; font-size:12px; font-weight:700; color:var(--color-text-secondary,#cbd5e1); }
     .yc-hint { font-size:11px; color:var(--color-text-tertiary,#888); line-height:1.5; }
+    .rider-hint { padding:0 20px 14px; font-size:11px; color:var(--color-text-tertiary,#888); }
     @media (max-width:960px) { .coupon-block-grid { grid-template-columns:1fr; } .yumcoins-grid { grid-template-columns:1fr; } }
     @media (max-width:768px) { .page { padding:12px; gap:16px; } .json-editor { font-size:12px; padding:14px; } .blocked-summary { align-items:stretch; flex-direction:column; } }
   `]
@@ -363,6 +397,14 @@ export class ConfigComponent implements OnInit {
   couponCfgSaveMsg = '';
   couponCfgSaveMsgType = 'ok';
 
+  riderJson = '';
+  riderParseError = '';
+  riderLoading = false;
+  riderSaving = false;
+  riderSaveMsg = '';
+  riderSaveMsgType = 'ok';
+  riderSource = '';
+
   constructor(private api: ApiService) {}
 
   ngOnInit(): void { this.loadAll(); }
@@ -374,6 +416,59 @@ export class ConfigComponent implements OnInit {
     this.loadYumcoins();
     this.loadCod();
     this.loadCouponConfig();
+    this.loadRiderConfig();
+  }
+
+  loadRiderConfig(): void {
+    this.riderLoading = true;
+    this.riderSaveMsg = '';
+    this.api.getRiderConfig().subscribe({
+      next: (res: any) => {
+        const cfg = {
+          riderSlots: res?.riderSlots ?? [],
+          riderBonusConfig: res?.riderBonusConfig ?? {},
+          riderSlotsSettings: res?.riderSlotsSettings ?? {},
+        };
+        this.riderSource = res?.source || '';
+        this.riderJson = JSON.stringify(cfg, null, 2);
+        this.riderParseError = '';
+        this.riderLoading = false;
+      },
+      error: () => { this.riderLoading = false; }
+    });
+  }
+
+  validateRider(): void {
+    try { JSON.parse(this.riderJson); this.riderParseError = ''; }
+    catch (e: any) { this.riderParseError = e.message; }
+  }
+
+  formatRider(): void {
+    try { this.riderJson = JSON.stringify(JSON.parse(this.riderJson), null, 2); this.riderParseError = ''; }
+    catch { }
+  }
+
+  saveRider(): void {
+    let payload: any;
+    try { payload = JSON.parse(this.riderJson); }
+    catch { return; }
+    this.riderSaving = true;
+    this.riderSaveMsg = '';
+    this.api.saveRiderConfig(payload).subscribe({
+      next: () => {
+        this.riderSaving = false;
+        this.riderSource = 'RIDER';
+        this.riderSaveMsg = '✓ Rider config saved';
+        this.riderSaveMsgType = 'ok';
+        setTimeout(() => this.riderSaveMsg = '', 3000);
+      },
+      error: () => {
+        this.riderSaving = false;
+        this.riderSaveMsg = '✗ Save failed';
+        this.riderSaveMsgType = 'err';
+        setTimeout(() => this.riderSaveMsg = '', 4000);
+      }
+    });
   }
 
   blankCouponConfig(): any {

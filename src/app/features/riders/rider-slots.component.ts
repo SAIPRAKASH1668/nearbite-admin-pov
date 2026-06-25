@@ -71,6 +71,27 @@ function emptyForm(): SlotForm {
       <div class="stat-card"><div class="stat-label">Seats (booked / total)</div><div class="stat-value">{{ bookedSeats }} / {{ totalSeats }}</div></div>
     </div>
 
+    <!-- Slot Settings -->
+    <div class="card settings-card" *ngIf="api.hasAdminKey && !loading">
+      <div class="settings-head">
+        <div>
+          <div class="settings-title">Slot Settings</div>
+          <div class="settings-sub">Compliance, penalties &amp; booking rules · stored in CONFIG#RIDER</div>
+        </div>
+        <button class="btn btn-primary btn-sm" (click)="saveSettings()" [disabled]="savingSettings">
+          {{ savingSettings ? 'Saving…' : 'Save settings' }}
+        </button>
+      </div>
+      <div class="settings-grid">
+        <div class="form-group" *ngFor="let f of settingsFields">
+          <label>{{ f.label }}</label>
+          <input class="form-input" type="number" [min]="f.min" [step]="f.step" [(ngModel)]="settings[f.key]" />
+        </div>
+      </div>
+      <div class="alert-success" *ngIf="settingsMsg" style="margin-top:10px">✓ {{ settingsMsg }}</div>
+      <div class="alert-error" *ngIf="settingsError" style="margin-top:10px">✕ {{ settingsError }}</div>
+    </div>
+
     <!-- Loading -->
     <div class="card" *ngIf="loading" style="padding:24px">
       <div class="skeleton" style="height:48px;margin-bottom:8px;border-radius:8px" *ngFor="let i of [1,2,3,4,5]"></div>
@@ -196,6 +217,15 @@ function emptyForm(): SlotForm {
     .keybar-compact { display:flex; align-items:center; gap:10px; margin-bottom:12px; font-size:12px; }
     .check-row { display:flex; align-items:center; gap:8px; font-size:13px; color:var(--color-text-secondary); cursor:pointer; }
     .check-row input { width:16px; height:16px; }
+    .settings-card { padding:16px; margin-bottom:16px; }
+    .settings-head { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:14px; flex-wrap:wrap; }
+    .settings-title { font-size:15px; font-weight:700; }
+    .settings-sub { font-size:12px; color:var(--color-text-tertiary,#888); margin-top:2px; }
+    .settings-grid { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:12px; }
+    .settings-grid .form-group { display:flex; flex-direction:column; gap:6px; }
+    .settings-grid label { font-size:12px; font-weight:600; color:var(--color-text-secondary); }
+    @media (max-width:900px) { .settings-grid { grid-template-columns:1fr 1fr; } }
+    @media (max-width:560px) { .settings-grid { grid-template-columns:1fr; } }
   `]
 })
 export class RiderSlotsComponent implements OnInit {
@@ -213,6 +243,22 @@ export class RiderSlotsComponent implements OnInit {
   deleteTarget: any = null;
   adminKeyInput = '';
   showKeyEdit = false;
+
+  settings: Record<string, number> = {};
+  savingSettings = false;
+  settingsMsg = '';
+  settingsError = '';
+  settingsFields: { key: string; label: string; step: number; min: number }[] = [
+    { key: 'complianceThresholdPct', label: 'Compliance threshold (0–1)', step: 0.05, min: 0 },
+    { key: 'maxRejectionsAllowed', label: 'Max rejections allowed', step: 1, min: 0 },
+    { key: 'noShowPenalty', label: 'No-show penalty (₹)', step: 5, min: 0 },
+    { key: 'staleSeconds', label: 'Offer stale after (sec)', step: 5, min: 0 },
+    { key: 'noShowBanThreshold', label: 'No-show ban threshold', step: 1, min: 0 },
+    { key: 'noShowBanWindowDays', label: 'No-show ban window (days)', step: 1, min: 0 },
+    { key: 'noShowBanDurationDays', label: 'No-show ban duration (days)', step: 1, min: 0 },
+    { key: 'releaseDaysInAdvance', label: 'Release days in advance', step: 1, min: 0 },
+    { key: 'cancelCutoffHours', label: 'Cancel cutoff (hours)', step: 1, min: 0 },
+  ];
 
   constructor(public api: ApiService) {}
 
@@ -241,11 +287,36 @@ export class RiderSlotsComponent implements OnInit {
       next: (res: any) => {
         this.slots = (res?.slots || []).sort((a: any, b: any) =>
           (a.date + a.startTime).localeCompare(b.date + b.startTime));
+        this.settings = { ...(res?.settings || {}) };
         this.loading = false;
       },
       error: (e) => {
         this.error = e?.error?.message || 'Failed to load slots (check the admin key / environment).';
         this.loading = false;
+      },
+    });
+  }
+
+  saveSettings(): void {
+    this.savingSettings = true;
+    this.settingsMsg = '';
+    this.settingsError = '';
+    const payload: Record<string, number> = {};
+    for (const f of this.settingsFields) {
+      const v = Number((this.settings as any)[f.key]);
+      if (!Number.isNaN(v)) payload[f.key] = v;
+    }
+    this.api.updateRiderSlotSettings(payload).subscribe({
+      next: (res: any) => {
+        this.settings = { ...(res?.settings || this.settings) };
+        this.savingSettings = false;
+        this.settingsMsg = 'Settings saved';
+        setTimeout(() => this.settingsMsg = '', 3000);
+      },
+      error: (e) => {
+        this.savingSettings = false;
+        this.settingsError = e?.error?.message || 'Failed to save settings';
+        setTimeout(() => this.settingsError = '', 4000);
       },
     });
   }
