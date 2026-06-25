@@ -424,4 +424,12 @@ export class ApiService {
   updateRiderSlotSettings(settings: Record<string, number>) {
     return this.post<any>('/api/v1/ops/rider-slots/settings', { settings });
   }
+
+  getRiderBonusConfig() {
+    return this.get<any>('/api/v1/ops/rider-bonus');
+  }
+
+  saveRiderBonusConfig(bonusConfig: any) {
+    return this.post<any>('/api/v1/ops/rider-bonus', { bonusConfig });
+  }
 }

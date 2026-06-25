@@ -20,6 +20,7 @@ export const routes: Routes = [
       { path: 'riders/status', loadComponent: () => import('./features/riders/rider-status.component').then(m => m.RiderStatusComponent) },
       { path: 'riders/earnings', loadComponent: () => import('./features/riders/rider-earnings.component').then(m => m.RiderEarningsComponent) },
       { path: 'riders/slots', loadComponent: () => import('./features/riders/rider-slots.component').then(m => m.RiderSlotsComponent) },
+      { path: 'riders/bonus-config', loadComponent: () => import('./features/riders/rider-bonus-config.component').then(m => m.RiderBonusConfigComponent) },
 
       // Restaurants
       { path: 'restaurant-earnings', loadComponent: () => import('./features/restaurants/restaurant-earnings.component').then(m => m.RestaurantEarningsComponent) },
