@@ -330,6 +330,14 @@ export class ApiService {
     return this.post<any>('/api/v1/coupon-config', data);
   }
 
+  getCouponBlocks() {
+    return this.get<any>('/api/v1/coupon-blocks');
+  }
+
+  saveCouponBlocks(blockedCouponsByRestaurant: Record<string, string[]>) {
+    return this.post<any>('/api/v1/coupon-blocks', { blockedCouponsByRestaurant });
+  }
+
   getRiderConfig() {
     return this.get<any>('/api/v1/rider-config');
   }

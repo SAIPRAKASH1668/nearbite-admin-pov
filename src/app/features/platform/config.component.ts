@@ -190,7 +190,7 @@ import { ApiService } from '../../core/services/api.service';
   <div class="config-section">
     <div class="section-header">
       <div class="section-title">Customer Coupon Blocks</div>
-      <span class="source-badge">global config</span>
+      <span class="source-badge">{{ couponBlocksSource ? 'source: ' + couponBlocksSource : 'CONFIG#COUPONS' }}</span>
     </div>
 
     <div class="coupon-block-body">
@@ -231,7 +231,7 @@ import { ApiService } from '../../core/services/api.service';
             <strong>{{ selectedCouponBlockRestaurantName }}</strong>
             <span>{{ selectedRestaurantBlockedCoupons.length }} blocked coupon{{ selectedRestaurantBlockedCoupons.length === 1 ? '' : 's' }}</span>
           </div>
-          <button class="btn btn-primary" (click)="saveCouponBlocks()" [disabled]="couponBlockSaving || globalLoading || !!globalParseError">
+          <button class="btn btn-primary" (click)="saveCouponBlocks()" [disabled]="couponBlockSaving">
             {{ couponBlockSaving ? 'Saving&hellip;' : 'Save Coupon Blocks' }}
           </button>
         </div>
@@ -376,6 +376,8 @@ export class ConfigComponent implements OnInit {
   couponBlockSaving = false;
   couponBlockSaveMsg = '';
   couponBlockSaveMsgType = 'ok';
+  blockedConfig: Record<string, string[]> = {};   // restaurantId -> blocked codes (CONFIG#COUPONS)
+  couponBlocksSource = '';
 
   yumcoins: any = this.blankYumcoins();
   yumcoinsLoading = false;
@@ -417,6 +419,17 @@ export class ConfigComponent implements OnInit {
     this.loadCod();
     this.loadCouponConfig();
     this.loadRiderConfig();
+    this.loadCouponBlocks();
+  }
+
+  loadCouponBlocks(): void {
+    this.api.getCouponBlocks().subscribe({
+      next: (res: any) => {
+        this.blockedConfig = this.normalizeBlockedCouponConfig(res?.blockedCouponsByRestaurant);
+        this.couponBlocksSource = res?.source || '';
+      },
+      error: () => {}
+    });
   }
 
   loadRiderConfig(): void {
@@ -709,9 +722,7 @@ export class ConfigComponent implements OnInit {
 
   get selectedRestaurantBlockedCoupons(): string[] {
     if (!this.selectedCouponBlockRestaurantId) return [];
-    const cfg = this.currentGlobalConfig();
-    const blocks = this.normalizeBlockedCouponConfig(cfg?.blockedCouponsByRestaurant);
-    return blocks[this.selectedCouponBlockRestaurantId] || [];
+    return this.blockedConfig[this.selectedCouponBlockRestaurantId] || [];
   }
 
   get availableCouponCodes(): string[] {
@@ -743,29 +754,28 @@ export class ConfigComponent implements OnInit {
 
   removeBlockedCoupon(code: string): void {
     if (!this.selectedCouponBlockRestaurantId) return;
-    const cfg = this.currentGlobalConfig();
-    const blocks = this.normalizeBlockedCouponConfig(cfg.blockedCouponsByRestaurant);
-    blocks[this.selectedCouponBlockRestaurantId] = (blocks[this.selectedCouponBlockRestaurantId] || [])
-      .filter(item => item !== String(code || '').trim().toUpperCase());
-    this.writeBlockedCouponConfig(cfg, blocks);
+    const up = String(code || '').trim().toUpperCase();
+    const list = (this.blockedConfig[this.selectedCouponBlockRestaurantId] || []).filter(c => c !== up);
+    this.blockedConfig = { ...this.blockedConfig, [this.selectedCouponBlockRestaurantId]: list };
   }
 
   saveCouponBlocks(): void {
-    if (!this.selectedCouponBlockRestaurantId || this.globalParseError) return;
-    const cfg = this.currentGlobalConfig();
+    if (!this.selectedCouponBlockRestaurantId) return;
+    const payload: Record<string, string[]> = {};
+    Object.entries(this.blockedConfig).forEach(([rid, codes]) => { if (codes?.length) payload[rid] = codes; });
     this.couponBlockSaving = true;
     this.couponBlockSaveMsg = '';
-    this.api.saveGlobalConfig(cfg).subscribe({
-      next: () => {
-        this.globalConfigData = cfg;
+    this.api.saveCouponBlocks(payload).subscribe({
+      next: (res: any) => {
+        this.blockedConfig = this.normalizeBlockedCouponConfig(res?.blockedCouponsByRestaurant);
         this.couponBlockSaving = false;
-        this.couponBlockSaveMsg = '&#10003; Coupon blocks saved';
+        this.couponBlockSaveMsg = '✓ Coupon blocks saved';
         this.couponBlockSaveMsgType = 'ok';
         setTimeout(() => this.couponBlockSaveMsg = '', 3000);
       },
       error: () => {
         this.couponBlockSaving = false;
-        this.couponBlockSaveMsg = '&#10007; Save failed';
+        this.couponBlockSaveMsg = '✗ Save failed';
         this.couponBlockSaveMsgType = 'err';
         setTimeout(() => this.couponBlockSaveMsg = '', 4000);
       }
@@ -827,22 +837,12 @@ export class ConfigComponent implements OnInit {
   private addBlockedCoupon(rawCode: string): void {
     const code = String(rawCode || '').trim().toUpperCase();
     if (!code || !this.selectedCouponBlockRestaurantId) return;
-
-    const cfg = this.currentGlobalConfig();
-    const blocks = this.normalizeBlockedCouponConfig(cfg.blockedCouponsByRestaurant);
-    const current = new Set(blocks[this.selectedCouponBlockRestaurantId] || []);
+    const current = new Set(this.blockedConfig[this.selectedCouponBlockRestaurantId] || []);
     current.add(code);
-    blocks[this.selectedCouponBlockRestaurantId] = Array.from(current).sort();
-    this.writeBlockedCouponConfig(cfg, blocks);
-  }
-
-  private currentGlobalConfig(): any {
-    try {
-      const parsed = JSON.parse(this.globalJson || '{}');
-      return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
-    } catch {
-      return this.globalConfigData && typeof this.globalConfigData === 'object' ? this.globalConfigData : {};
-    }
+    this.blockedConfig = {
+      ...this.blockedConfig,
+      [this.selectedCouponBlockRestaurantId]: Array.from(current).sort(),
+    };
   }
 
   private normalizeBlockedCouponConfig(value: any): Record<string, string[]> {
@@ -871,16 +871,4 @@ export class ConfigComponent implements OnInit {
     )).sort();
   }
 
-  private writeBlockedCouponConfig(cfg: any, blocks: Record<string, string[]>): void {
-    Object.keys(blocks).forEach(key => {
-      if (!blocks[key]?.length) delete blocks[key];
-    });
-    if (Object.keys(blocks).length) cfg.blockedCouponsByRestaurant = blocks;
-    else delete cfg.blockedCouponsByRestaurant;
-
-    this.globalConfigData = cfg;
-    this.globalJson = JSON.stringify(cfg, null, 2);
-    this.globalParseError = '';
-    this.couponBlockSaveMsg = '';
-  }
 }
