@@ -26,6 +26,9 @@ const LIVE_STATUSES = [
   'AWAITING_RIDER_ASSIGNMENT', 'OFFERED_TO_RIDER', 'RIDER_ASSIGNED',
   'PICKED_UP', 'OUT_FOR_DELIVERY',
 ];
+// Mirrors orders-live.component.ts: before pickup the rider routes to the
+// restaurant; once picked up / out for delivery it routes to the customer.
+const PRE_PICKUP = ['PREPARING', 'READY_FOR_PICKUP', 'RIDER_ASSIGNED'];
 const POST_PICKUP = ['PICKED_UP', 'OUT_FOR_DELIVERY'];
 
 interface Point { lat: number; lng: number; }
@@ -154,6 +157,13 @@ export class OrderPoolMapComponent implements OnInit, OnDestroy {
 
   isPostPickup(status: string): boolean { return POST_PICKUP.includes(status); }
 
+  // Ported verbatim from the In-Progress monitor (orders-live.component.ts).
+  private resolveActiveDestination(status: string, restaurant: Point | null, customer: Point | null): Point | null {
+    if (PRE_PICKUP.includes(status) && restaurant) return restaurant;
+    if (POST_PICKUP.includes(status) && customer) return customer;
+    return customer || restaurant;
+  }
+
   last4(orderId: string): string { const s = String(orderId || ''); return s.slice(-4) || s; }
 
   // Legend blocks stay blank (white) until clicked; clicking reveals their text + focuses the map.
@@ -242,15 +252,17 @@ export class OrderPoolMapComponent implements OnInit, OnDestroy {
         if (c) { this.addPin(c, `C-${this.last4(o.orderId)}`, o.color); bounds.extend(this.ll(c)); any = true; }
         if (d) { this.addPin(d, `D-${o.riderName}`, o.color, true); bounds.extend(this.ll(d)); any = true; }
 
-        // Restaurant -> Customer route (the delivery leg) in the order's colour.
-        if (r && c) {
+        // Route = rider → active destination (exact In-Progress logic). Before
+        // pickup that's the restaurant; once OUT_FOR_DELIVERY/PICKED_UP it's the
+        // customer — so an out-for-delivery order is NOT connected to the restaurant.
+        // Awaiting a rider → show the prospective pickup→drop leg so it's poolable.
+        const activeDest = this.resolveActiveDestination(o.status, r, c);
+        if (d && activeDest) {
+          if (this.useRoadRoutes) this.drawRoadRoute(d, activeDest, o.color, i);
+          else this.drawLine([d, activeDest], o.color, false);
+        } else if (r && c) {
           if (this.useRoadRoutes) this.drawRoadRoute(r, c, o.color, i);
           else this.drawLine([r, c], o.color, false);
-        }
-        // Connect the rider to its active destination (restaurant pre-pickup, customer after).
-        if (d) {
-          const dest = POST_PICKUP.includes(o.status) ? (c || r) : (r || c);
-          if (dest) this.drawLine([d, dest], o.color, true);
         }
       });
 
