@@ -73,15 +73,16 @@ interface PoolOrder {
       <aside class="legend">
         <div class="legend-head">Orders ({{ poolOrders.length }})</div>
         <div class="legend-empty" *ngIf="!loading && poolOrders.length === 0">No in-progress orders for this date.</div>
-        <div class="legend-item" *ngFor="let o of poolOrders" (click)="focus(o)" [title]="o.orderId">
+        <div class="legend-item" *ngFor="let o of poolOrders" (click)="toggle(o)" [class.open]="expanded.has(o.orderId)" [title]="'Order ' + o.orderId">
           <span class="swatch" [style.background]="o.color"></span>
-          <div class="legend-text">
+          <div class="legend-text" *ngIf="expanded.has(o.orderId)">
+            <div class="legend-line"><strong>C</strong> #{{ last4(o.orderId) }}</div>
             <div class="legend-line"><strong>R</strong> {{ o.restaurantName || '—' }}</div>
-            <div class="legend-line"><strong>C</strong> {{ o.receiverPhone || '—' }}</div>
+            <div class="legend-line" *ngIf="o.receiverPhone"><strong>☎</strong> {{ o.receiverPhone }}</div>
             <div class="legend-line" *ngIf="o.riderName"><strong>D</strong> {{ o.riderName }}</div>
             <div class="legend-line muted" *ngIf="!o.rider">No rider yet</div>
+            <span class="legend-status" [attr.data-post]="isPostPickup(o.status)">{{ o.status }}</span>
           </div>
-          <span class="legend-status" [attr.data-post]="isPostPickup(o.status)">{{ o.status }}</span>
         </div>
       </aside>
 
@@ -110,8 +111,9 @@ interface PoolOrder {
     .legend { border:1px solid var(--color-border,#eee); border-radius:12px; background:var(--color-bg-card,#fff); overflow:auto; padding:8px; }
     .legend-head { font-size:12px; font-weight:700; padding:6px 8px; color:var(--color-text-secondary); position:sticky; top:0; background:inherit; }
     .legend-empty { padding:12px; font-size:12px; color:var(--color-text-tertiary,#888); }
-    .legend-item { display:flex; gap:8px; align-items:flex-start; padding:8px; border-radius:8px; cursor:pointer; }
-    .legend-item:hover { background:var(--color-bg-secondary,#f5f5f5); }
+    .legend-item { display:flex; gap:8px; align-items:flex-start; padding:8px; border-radius:8px; cursor:pointer; background:#fff; border:1px solid var(--color-border,#eee); margin-bottom:6px; }
+    .legend-item:hover { border-color:#cbd5e1; }
+    .legend-item.open { border-color:#94a3b8; box-shadow:0 1px 4px rgba(0,0,0,.06); }
     .swatch { width:14px; height:14px; border-radius:4px; flex:0 0 auto; margin-top:2px; border:1px solid rgba(0,0,0,.15); }
     .legend-text { flex:1; min-width:0; }
     .legend-line { font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
@@ -143,12 +145,26 @@ export class OrderPoolMapComponent implements OnInit, OnDestroy {
 
   constructor(private api: ApiService) {}
 
+  expanded = new Set<string>();
+
   get withRiderCount(): number { return this.poolOrders.filter(o => !!o.rider).length; }
 
   ngOnInit(): void { this.load(); }
   ngOnDestroy(): void { this.refreshSub?.unsubscribe(); }
 
   isPostPickup(status: string): boolean { return POST_PICKUP.includes(status); }
+
+  last4(orderId: string): string { const s = String(orderId || ''); return s.slice(-4) || s; }
+
+  // Legend blocks stay blank (white) until clicked; clicking reveals their text + focuses the map.
+  toggle(o: PoolOrder): void {
+    if (this.expanded.has(o.orderId)) {
+      this.expanded.delete(o.orderId);
+    } else {
+      this.expanded.add(o.orderId);
+      this.focus(o);
+    }
+  }
 
   setupAutoRefresh(): void {
     this.refreshSub?.unsubscribe();
@@ -223,7 +239,7 @@ export class OrderPoolMapComponent implements OnInit, OnDestroy {
       this.poolOrders.forEach((o, i) => {
         const r = o.restaurant, c = o.customer, d = o.rider;
         if (r) { this.addPin(r, `R-${o.restaurantName}`, o.color); bounds.extend(this.ll(r)); any = true; }
-        if (c) { this.addPin(c, `C-${o.receiverPhone}`, o.color); bounds.extend(this.ll(c)); any = true; }
+        if (c) { this.addPin(c, `C-${this.last4(o.orderId)}`, o.color); bounds.extend(this.ll(c)); any = true; }
         if (d) { this.addPin(d, `D-${o.riderName}`, o.color, true); bounds.extend(this.ll(d)); any = true; }
 
         // Restaurant -> Customer route (the delivery leg) in the order's colour.
