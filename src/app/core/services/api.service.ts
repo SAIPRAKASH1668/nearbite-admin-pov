@@ -330,6 +330,16 @@ export class ApiService {
     return this.post<any>('/api/v1/coupon-config', data);
   }
 
+  /** Effective config (global merged with a restaurant's per-field overrides). */
+  getEffectiveConfig(restaurantId?: string) {
+    return this.get<any>('/api/v1/effective-config', restaurantId ? { restaurantId } : undefined);
+  }
+
+  /** Write fee/commission/hike fields to global (no restaurantId) or a restaurant row. */
+  saveConfigFields(restaurantId: string | null, fields: Record<string, number>) {
+    return this.post<any>('/api/v1/config-fields', { restaurantId: restaurantId || null, fields });
+  }
+
   getCouponBlocks() {
     return this.get<any>('/api/v1/coupon-blocks');
   }

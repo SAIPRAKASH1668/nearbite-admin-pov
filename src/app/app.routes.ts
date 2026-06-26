@@ -39,6 +39,7 @@ export const routes: Routes = [
       { path: 'daily-deal', loadComponent: () => import('./features/platform/daily-deal.component').then(m => m.DailyDealComponent) },
       { path: 'food-categories', loadComponent: () => import('./features/platform/food-categories.component').then(m => m.FoodCategoriesComponent) },
       { path: 'config', loadComponent: () => import('./features/platform/config.component').then(m => m.ConfigComponent) },
+      { path: 'config-editor', loadComponent: () => import('./features/platform/config-fields.component').then(m => m.ConfigFieldsComponent) },
       { path: 'revenue', loadComponent: () => import('./features/platform/revenue-reports.component').then(m => m.RevenueReportsComponent) },
       { path: 'gst-export', loadComponent: () => import('./features/platform/gst-invoice-export.component').then(m => m.GstInvoiceExportComponent) },
       { path: 'gst-revenue', loadComponent: () => import('./features/platform/gst-revenue.component').then(m => m.GstRevenueComponent) },
