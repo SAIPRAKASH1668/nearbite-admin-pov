@@ -13,6 +13,7 @@ export const routes: Routes = [
       { path: 'orders', loadComponent: () => import('./features/orders/orders.component').then(m => m.OrdersComponent) },
       { path: 'orders/live', loadComponent: () => import('./features/orders/orders-live.component').then(m => m.OrdersLiveComponent) },
       { path: 'orders/cod', loadComponent: () => import('./features/orders/orders-cod.component').then(m => m.OrdersCodComponent) },
+      { path: 'orders/pool-map', loadComponent: () => import('./features/orders/order-pool-map.component').then(m => m.OrderPoolMapComponent) },
       { path: 'orders/:id', loadComponent: () => import('./features/orders/order-detail.component').then(m => m.OrderDetailComponent) },
 
       // Riders
