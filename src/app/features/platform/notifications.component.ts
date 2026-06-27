@@ -103,11 +103,23 @@ interface NotificationHealthSummary {
         <div class="payload-box">
           <div class="payload-head">
             <span>Lambda event payload</span>
-            <button class="btn btn-secondary btn-sm" (click)="copyPayload()" [disabled]="!canCopy">
-              {{ copyState || 'Copy payload' }}
-            </button>
+            <div class="payload-actions">
+              <button class="btn btn-secondary btn-sm" (click)="copyPayload()" [disabled]="!canCopy">
+                {{ copyState || 'Copy payload' }}
+              </button>
+              <button class="btn btn-primary btn-sm" (click)="sendBroadcast()" [disabled]="!canCopy || sending">
+                {{ sending ? 'Sending…' : 'Send now' }}
+              </button>
+            </div>
           </div>
           <pre>{{ payloadPreview }}</pre>
+          <div class="send-row">
+            <div *ngIf="!api.hasAdminKey" class="admin-key">
+              <input class="form-input" type="password" [(ngModel)]="adminKeyInput" placeholder="ADMIN_API_KEY (required to send)" />
+              <button class="btn btn-secondary btn-sm" (click)="saveAdminKey()" [disabled]="!adminKeyInput.trim()">Save key</button>
+            </div>
+            <div *ngIf="sendMsg" class="send-msg" [class.send-ok]="sendOk" [class.send-err]="!sendOk">{{ sendMsg }}</div>
+          </div>
         </div>
       </div>
     </div>
@@ -207,6 +219,13 @@ interface NotificationHealthSummary {
     .payload-box { border:1px solid var(--color-border); border-radius:8px; overflow:hidden; background:#fff; }
     .payload-head { display:flex; justify-content:space-between; align-items:center; gap:10px; padding:8px 10px; border-bottom:1px solid var(--color-border); color:var(--color-500); font-size:12px; font-weight:600; }
     .payload-box pre { margin:0; padding:10px; max-height:220px; overflow:auto; background:var(--color-50); font: 12px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space:pre-wrap; }
+    .payload-actions { display:flex; gap:8px; }
+    .send-row { display:flex; flex-direction:column; gap:8px; padding:10px; border-top:1px solid var(--color-border); }
+    .admin-key { display:flex; gap:8px; align-items:center; }
+    .admin-key .form-input { flex:1; min-width:0; }
+    .send-msg { font-size:12px; font-weight:600; }
+    .send-ok { color:#12805c; }
+    .send-err { color:#b42318; }
     .btn-sm { padding:5px 8px; font-size:11px; }
     .templates-list { padding:8px; display:flex; flex-direction:column; gap:4px; }
     .template-item { width:100%; display:block; text-align:left; padding:9px 10px; border:0; border-radius:6px; background:transparent; cursor:pointer; }
@@ -241,6 +260,10 @@ export class NotificationsComponent implements OnInit {
   loadingHealth = false;
   healthError = '';
   copyState = '';
+  sending = false;
+  sendMsg = '';
+  sendOk = false;
+  adminKeyInput = '';
 
   healthSummary: NotificationHealthSummary | null = null;
   restaurants: NotificationHealthRow[] = [];
@@ -270,10 +293,45 @@ export class NotificationsComponent implements OnInit {
     },
   ];
 
-  constructor(private api: ApiService) {}
+  constructor(public api: ApiService) {}
 
   ngOnInit(): void {
     this.loadHealth();
+  }
+
+  saveAdminKey(): void {
+    const key = this.adminKeyInput.trim();
+    if (!key) return;
+    this.api.setAdminKey(key);
+    this.adminKeyInput = '';
+  }
+
+  sendBroadcast(): void {
+    if (!this.canCopy || this.sending) return;
+    if (!this.api.hasAdminKey) {
+      this.sendOk = false;
+      this.sendMsg = 'Set the Admin API key first (required for ops endpoints).';
+      return;
+    }
+    if (!window.confirm('Send this notification to ALL active customers now? This cannot be undone.')) return;
+
+    this.sending = true;
+    this.sendMsg = '';
+    this.api.sendBroadcast(this.payload).subscribe({
+      next: (res: any) => {
+        this.sending = false;
+        this.sendOk = true;
+        this.sendMsg = res?.message || 'Broadcast started — sending to all active customers.';
+      },
+      error: (e: any) => {
+        this.sending = false;
+        this.sendOk = false;
+        this.sendMsg =
+          e?.status === 401 || e?.status === 403
+            ? 'Unauthorized — check the Admin API key.'
+            : e?.error?.message || 'Failed to start broadcast.';
+      },
+    });
   }
 
   get dataError(): string {

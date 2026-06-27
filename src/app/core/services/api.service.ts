@@ -402,6 +402,11 @@ export class ApiService {
     return this.get<any>('/api/v1/admin/restaurants/notification-health');
   }
 
+  /** Fire the customer broadcast (ops endpoint; async-invokes the Lambda). Needs the ADMIN_API_KEY. */
+  sendBroadcast(payload: { title?: string; imageUrl?: string; customMessage: string; data?: Record<string, unknown> }) {
+    return this.post<any>('/api/v1/ops/broadcast', payload);
+  }
+
   // ─── Customers / Users ──────────────────────────────────────────────────
   // Fetch a user row by phone (role defaults to CUSTOMER). Standard JWT auth;
   // the response may include the disableCod / forceCod flags when set.
