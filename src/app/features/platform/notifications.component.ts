@@ -46,7 +46,7 @@ interface NotificationHealthSummary {
   <div class="support-note">
     <strong>Supported by backend today:</strong>
     customer broadcast Lambda payloads for active CUSTOMER users in geohash <code>td</code>, plus restaurant FCM token health.
-    The API does not expose rider, restaurant, specific-user, image URL, or deep-link notification sending from the admin app.
+    The API does not expose rider, restaurant, specific-user, or deep-link notification sending from the admin app.
   </div>
 
   <div class="content-grid notif-grid">
@@ -72,6 +72,13 @@ interface NotificationHealthSummary {
         </div>
 
         <div class="form-group">
+          <label>Image URL</label>
+          <input class="form-input" [(ngModel)]="form.imageUrl" placeholder="https://cdn.yumdude.com/banner.jpg" />
+          <div class="error-text" *ngIf="imageError">{{ imageError }}</div>
+          <div class="help-text" *ngIf="!imageError">Optional. Shows as a large image (Android now; iOS after the app update).</div>
+        </div>
+
+        <div class="form-group">
           <label>Message body *</label>
           <textarea class="form-input" rows="4" [(ngModel)]="form.customMessage" placeholder="Write the customer message..."></textarea>
           <div class="char-count">{{ form.customMessage.length }}/200</div>
@@ -84,11 +91,12 @@ interface NotificationHealthSummary {
           <div class="help-text" *ngIf="!dataError">Backend merges this object and defaults <code>type</code> to <code>custom</code>.</div>
         </div>
 
-        <div class="notif-preview" *ngIf="form.title || form.customMessage">
+        <div class="notif-preview" *ngIf="form.title || form.customMessage || form.imageUrl">
           <div class="notif-icon">YD</div>
           <div class="notif-content">
             <div class="notif-title">{{ form.title || 'Notification' }}</div>
             <div class="notif-body">{{ form.customMessage || 'Message body...' }}</div>
+            <img *ngIf="form.imageUrl && !imageError" class="notif-image" [src]="form.imageUrl" alt="Notification image" />
           </div>
         </div>
 
@@ -195,6 +203,7 @@ interface NotificationHealthSummary {
     .notif-icon { width:32px; height:32px; display:grid; place-items:center; border-radius:8px; background:var(--color-primary); color:#fff; font-size:11px; font-weight:800; flex-shrink:0; }
     .notif-title { font-weight:600; font-size:13px; }
     .notif-body { font-size:12px; color:var(--color-500); margin-top:2px; }
+    .notif-image { display:block; margin-top:8px; width:100%; max-height:160px; object-fit:cover; border-radius:8px; border:1px solid var(--color-border); }
     .payload-box { border:1px solid var(--color-border); border-radius:8px; overflow:hidden; background:#fff; }
     .payload-head { display:flex; justify-content:space-between; align-items:center; gap:10px; padding:8px 10px; border-bottom:1px solid var(--color-border); color:var(--color-500); font-size:12px; font-weight:600; }
     .payload-box pre { margin:0; padding:10px; max-height:220px; overflow:auto; background:var(--color-50); font: 12px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space:pre-wrap; }
@@ -238,6 +247,7 @@ export class NotificationsComponent implements OnInit {
 
   form = {
     title: '',
+    imageUrl: '',
     customMessage: '',
     dataJson: '{\n  "type": "custom"\n}',
   };
@@ -278,12 +288,20 @@ export class NotificationsComponent implements OnInit {
     }
   }
 
-  get payload(): { title?: string; customMessage: string; data?: Record<string, unknown> } {
-    const event: { title?: string; customMessage: string; data?: Record<string, unknown> } = {
+  get imageError(): string {
+    const url = this.form.imageUrl.trim();
+    if (!url) return '';
+    return /^https:\/\/\S+$/i.test(url) ? '' : 'Image URL must start with https://';
+  }
+
+  get payload(): { title?: string; customMessage: string; imageUrl?: string; data?: Record<string, unknown> } {
+    const event: { title?: string; customMessage: string; imageUrl?: string; data?: Record<string, unknown> } = {
       customMessage: this.form.customMessage.trim(),
     };
     const title = this.form.title.trim();
     if (title) event.title = title;
+    const imageUrl = this.form.imageUrl.trim();
+    if (imageUrl) event.imageUrl = imageUrl;
     const data = this.parseDataJson();
     if (data) event.data = data;
     return event;
@@ -294,7 +312,7 @@ export class NotificationsComponent implements OnInit {
   }
 
   get canCopy(): boolean {
-    return !!this.form.customMessage.trim() && !this.dataError;
+    return !!this.form.customMessage.trim() && !this.dataError && !this.imageError;
   }
 
   applyTemplate(template: NotificationTemplate): void {
