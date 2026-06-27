@@ -1,6 +1,6 @@
 /**
- * Config Editor — structured editor for the fee / commission / hike-cap fields that
- * live on the global config and can be overridden per restaurant.
+ * Delivery fee config — structured editor for the fee / commission / hike-cap fields
+ * that live on the global config and can be overridden per restaurant.
  *
  * Pick a target from the dropdown (Global, or a restaurant). The form loads the
  * *effective* values (GET /api/v1/effective-config): for a restaurant with no config
@@ -51,14 +51,14 @@ const GROUPS: FieldGroup[] = [
 const ALL_KEYS = GROUPS.flatMap(g => g.fields.map(f => f.key));
 
 @Component({
-  selector: 'app-config-fields',
+  selector: 'app-delivery-fee-config',
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
   <div class="page fade-in">
     <div class="page-header">
       <div>
-        <div class="page-title">Config Editor</div>
+        <div class="page-title">Delivery fee config</div>
         <div class="page-subtitle">Fees, commission &amp; hike caps — global or per restaurant</div>
       </div>
       <div class="header-actions">
@@ -135,7 +135,7 @@ const ALL_KEYS = GROUPS.flatMap(g => g.fields.map(f => f.key));
     @media (max-width:560px) { .field-grid { grid-template-columns:1fr; } }
   `]
 })
-export class ConfigFieldsComponent implements OnInit {
+export class DeliveryFeeConfigComponent implements OnInit {
   groups = GROUPS;
   restaurants: any[] = [];
   target = '';                              // '' = global, else restaurantId
